@@ -5,14 +5,17 @@ using Avalonia.Android;
 
 namespace ControlCatalog.Android
 {
-    [Activity(Label = "ControlCatalog.Android", Theme = "@style/MyTheme.NoActionBar", Icon = "@drawable/icon", LaunchMode = LaunchMode.SingleInstance)]
+    [Activity(Label = "ControlCatalog.Android", Theme = "@style/Theme.AppCompat.Light.NoActionBar", Icon = "@drawable/icon", LaunchMode = LaunchMode.SingleInstance, ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize)]
     public class MainActivity : AvaloniaActivity
     {
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
 
-            Content = new MainView();
+            if (Content == null)
+            {
+                Content = new MainView();
+            }
         }
     }
 }
