@@ -8,6 +8,7 @@ using Android.Views.InputMethods;
 using Avalonia.Android.OpenGL;
 using Avalonia.Android.Platform.Specific;
 using Avalonia.Android.Platform.Specific.Helpers;
+using Avalonia.Android.Vulkan;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Controls.Platform.Surfaces;
@@ -18,6 +19,7 @@ using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 using Avalonia.Platform;
 using Avalonia.Rendering;
+using Avalonia.Vulkan;
 
 namespace Avalonia.Android.Platform.SkiaPlatform
 {
@@ -28,6 +30,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         private readonly AndroidKeyboardEventsHelper<TopLevelImpl> _keyboardHelper;
         private readonly AndroidTouchEventsHelper<TopLevelImpl> _touchHelper;
+        private readonly VulkanPlatformSurface _vulkan;
         private readonly ITextInputMethodImpl _textInputMethod;
         private ViewImpl _view;
 
@@ -39,7 +42,11 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             _touchHelper = new AndroidTouchEventsHelper<TopLevelImpl>(this, () => InputRoot,
                 GetAvaloniaPointFromEvent);
 
-            _gl = GlPlatformSurface.TryCreate(this);
+            _vulkan = VulkanPlatformSurface.TryCreate(this);
+            if (_vulkan == null)
+            {
+                _gl = GlPlatformSurface.TryCreate(this);
+            }
             _framebuffer = new FramebufferManager(this);
 
             RenderScaling = (int)_view.Resources.DisplayMetrics.Density;
@@ -77,7 +84,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public IPlatformHandle Handle => _view;
 
-        public IEnumerable<object> Surfaces => new object[] { _gl, _framebuffer };
+        public IEnumerable<object> Surfaces => new object[] { _gl, _vulkan, _framebuffer  };
 
         public IRenderer CreateRenderer(IRenderRoot root) =>
             AndroidPlatform.Options.UseDeferredRendering
