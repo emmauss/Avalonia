@@ -21,6 +21,7 @@ using Avalonia.Win32.OpenGl;
 using Avalonia.Win32.WinRT;
 using Avalonia.Win32.WinRT.Composition;
 using static Avalonia.Win32.Interop.UnmanagedMethods;
+using Avalonia.Win32.Vulkan;
 
 namespace Avalonia.Win32
 {
@@ -459,7 +460,7 @@ namespace Avalonia.Win32
             }
         }
 
-        public IEnumerable<object> Surfaces => new object[] { Handle, _gl, _framebuffer };
+        public IEnumerable<object> Surfaces => new object[] { Handle, _gl, _framebuffer, new Win32VulkanPlatformSurface(this) };
 
         public PixelPoint Position
         {

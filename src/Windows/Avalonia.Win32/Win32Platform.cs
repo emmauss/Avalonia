@@ -16,6 +16,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Threading;
 using Avalonia.Utilities;
+using Avalonia.Vulkan;
 using Avalonia.Win32.Input;
 using Avalonia.Win32.Interop;
 using static Avalonia.Win32.Interop.UnmanagedMethods;
@@ -71,9 +72,14 @@ namespace Avalonia
         public bool OverlayPopups { get; set; }
 
         /// <summary>
-        /// Avalonia would try to use native Widows OpenGL when set to true. The default value is false.
+        /// Avalonia would try to use native Windows OpenGL when set to true. The default value is false.
         /// </summary>
         public bool UseWgl { get; set; }
+
+        /// <summary>
+        /// Avalonia would try to use native Windows Vulkan when set to true. The default value is false.
+        /// </summary>
+        public bool UseVulkan { get; set; }
 
         public IList<GlVersion> WglProfiles { get; set; } = new List<GlVersion>
         {
@@ -170,7 +176,14 @@ namespace Avalonia.Win32
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new WindowsMountedVolumeInfoProvider())
                 .Bind<IPlatformLifetimeEventsImpl>().ToConstant(s_instance);
 
-            Win32GlManager.Initialize();
+            if (options.UseVulkan)
+            {
+                VulkanPlatformInterface.TryInitialize();
+            }
+            else
+            {
+                Win32GlManager.Initialize();
+            }
 
             _uiThread = Thread.CurrentThread;
 

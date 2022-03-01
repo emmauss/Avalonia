@@ -1,6 +1,13 @@
 ﻿using Android.App;
 using Android.Content;
 using Android.OS;
+<<<<<<< HEAD
+=======
+using Application = Android.App.Application;
+
+using Avalonia;
+using Avalonia.Android;
+>>>>>>> 0f6e65aa4 (android support)
 
 namespace ControlCatalog.Android
 {
@@ -15,7 +22,7 @@ namespace ControlCatalog.Android
         protected override void OnResume()
         {
             base.OnResume();
-
+            
             StartActivity(new Intent(Application.Context, typeof(MainActivity)));
         }
     }
