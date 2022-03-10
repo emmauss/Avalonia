@@ -21,7 +21,11 @@ namespace Avalonia.Vulkan.Surfaces
                 platformInterface.PhysicalDevice, surface);
             Surface = surface;
 
-            Format = Display.SurfaceFormat.Format;
+            // Skia seems to only create surfaces from images with unorm format
+            Format = Display.SurfaceFormat.Format >= Format.R8G8B8A8Unorm &&
+                     Display.SurfaceFormat.Format <= Format.R8G8B8A8Srgb ?
+                Format.R8G8B8A8Unorm :
+                Format.B8G8R8A8Unorm;
 
             ImageUsageFlags = ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
                               ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit;
