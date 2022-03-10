@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Avalonia.Logging;
 using Silk.NET.Core;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.EXT;
 
 namespace Avalonia.Vulkan
 {
@@ -102,7 +104,32 @@ namespace Avalonia.Vulkan
 
             for (var i = 0; i < enabledLayers.Count; i++) Marshal.FreeHGlobal(ppEnabledLayers[i]);
 
+            if (options.UseDebug && api.TryGetInstanceExtension(instance, out ExtDebugUtils debugUtils))
+            {
+                var createInfo = new DebugUtilsMessengerCreateInfoEXT
+                {
+                    SType = StructureType.DebugUtilsMessengerCreateInfoExt,
+                    MessageSeverity = DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityVerboseBitExt | DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityWarningBitExt | DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityErrorBitExt,
+                    MessageType = DebugUtilsMessageTypeFlagsEXT.DebugUtilsMessageTypeGeneralBitExt | DebugUtilsMessageTypeFlagsEXT.DebugUtilsMessageTypeValidationBitExt | DebugUtilsMessageTypeFlagsEXT.DebugUtilsMessageTypePerformanceBitExt,
+                    PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(LogCallback),
+                };
+
+                debugUtils.CreateDebugUtilsMessenger(instance, createInfo, null, out var messenger);
+            }
+
             return new VulkanInstance(instance, api);
+        }
+
+        private static unsafe uint LogCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+        {
+            if (messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityWarningBitExt)
+            {
+                var message = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
+
+                Logger.TryGet(LogEventLevel.Warning, "Vulkan")?.Log(null, message);
+            }
+
+            return Vk.False;
         }
 
         private static unsafe bool IsLayerAvailable(Vk api, string layerName)
