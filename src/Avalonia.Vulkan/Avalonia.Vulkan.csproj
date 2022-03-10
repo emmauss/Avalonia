@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Silk.NET.Vulkan" Version="2.12.0" />
+    <PackageReference Include="Silk.NET.Vulkan.Extensions.EXT" Version="2.12.0" />
     <PackageReference Include="Silk.NET.Vulkan.Extensions.Khr" Version="2.12.0" />
   </ItemGroup>
 </Project>
