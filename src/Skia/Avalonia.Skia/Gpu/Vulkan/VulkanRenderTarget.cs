@@ -52,7 +52,7 @@ namespace Avalonia.Skia
                         CurrentQueueFamily = disp.QueueFamilyIndex,
                         Format = (uint)_surface.Format,
                         Image = _surface.Image.ApiHandle.Value.Handle,
-                        ImageLayout = (uint)ImageLayout.ColorAttachmentOptimal,
+                        ImageLayout = (uint)_surface.Image.CurrentLayout,
                         ImageTiling = (uint)ImageTiling.Optimal,
                         ImageUsageFlags = (uint)_surface.ImageUsageFlags,
                         LevelCount = _surface.MipLevels,
@@ -117,9 +117,13 @@ namespace Avalonia.Skia
 
             public void Dispose()
             {
-                lock (_vulkanSession.Display.Device.Queue)
+                lock (_vulkanSession.Display.Device.Lock)
                 {
-                    SkSurface.Canvas.Flush();
+                    if (_vulkanSession.IsImageValid)
+                    {
+                        SkSurface.Canvas.Flush();
+                    }
+
                     SkSurface.Dispose();
                     _backendRenderTarget.Dispose();
                     GrContext.Flush();

@@ -22,11 +22,13 @@ namespace Avalonia.Vulkan.Controls
             if (!EnsureInitialized())
                 return;
 
-            EnsureTextureAttachment();
+            lock (_platformInterface.Device.Lock)
+            {
+                EnsureTextureAttachment();
 
-            OnVulkanRender(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
-            _attachment.Present();
-
+                OnVulkanRender(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
+                _attachment.Present();
+            }
 
             context.DrawImage(_bitmap, new Rect(_bitmap.Size), Bounds);
             base.Render(context);
@@ -44,14 +46,14 @@ namespace Avalonia.Vulkan.Controls
                     _bitmap = new VulkanBitmap(GetPixelSize(), new Vector(96, 96));
                     _attachment = _bitmap.CreateFramebufferAttachment(_platformInterface);
                 }
+
+            (_attachment.GetBitmapImage() as VulkanImage).TransitionLayout(ImageLayout.ColorAttachmentOptimal, AccessFlags.AccessColorAttachmentReadBit);
         }
 
         void DoCleanup()
         {
             if (_platformInterface != null)
             {
-                _attachment?.Dispose();
-                _bitmap?.Dispose();
 
                 try
                 {
@@ -63,6 +65,11 @@ namespace Avalonia.Vulkan.Controls
                 }
                 finally
                 {
+                    _attachment?.Dispose();
+                    _bitmap?.Dispose();
+
+                    _attachment = null;
+                    _bitmap = null;
                     _platformInterface = null;
                 }
             }
@@ -84,28 +91,31 @@ namespace Avalonia.Vulkan.Controls
                 return false;
             }
 
-            try
+            lock (_platformInterface.Device.Lock)
             {
-                _bitmap = new VulkanBitmap(GetPixelSize(), new Vector(96, 96));
-            }
-            catch (Exception e)
-            {
-                Logger.TryGet(LogEventLevel.Error, "OpenGL")?.Log("OpenGlControlBase",
-                    "Unable to initialize OpenGL: unable to create OpenGlBitmap: {exception}", e);
-                return false;
-            }
+                try
+                {
+                    _bitmap = new VulkanBitmap(GetPixelSize(), new Vector(96, 96));
+                }
+                catch (Exception e)
+                {
+                    Logger.TryGet(LogEventLevel.Error, "OpenGL")?.Log("VulkanControlBase",
+                        "Unable to initialize Vulkan: unable to create VulkanBitmap: {exception}", e);
+                    return false;
+                }
 
-            try
-            {
-                EnsureTextureAttachment();
+                try
+                {
+                    EnsureTextureAttachment();
 
-                return true;
-            }
-            catch (Exception e)
-            {
-                Logger.TryGet(LogEventLevel.Error, "Vulkan")?.Log("VulkanControlBase",
-                    "Unable to initialize Vulkan Image: {exception}", e);
-                return false;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    Logger.TryGet(LogEventLevel.Error, "Vulkan")?.Log("VulkanControlBase",
+                        "Unable to initialize Vulkan Image: {exception}", e);
+                    return false;
+                }
             }
         }
 

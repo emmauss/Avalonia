@@ -61,7 +61,7 @@ namespace Avalonia.Vulkan
             {
                 PApplicationName = (byte*)applicationName,
                 ApiVersion = new Version32((uint)options.VulkanVersion.Major, (uint)options.VulkanVersion.Minor,
-                    (uint)options.VulkanVersion.Revision),
+                    (uint)options.VulkanVersion.Build),
                 PEngineName = (byte*)engineName,
                 EngineVersion = new Version32(1, 0, 0),
                 ApplicationVersion = new Version32(1, 0, 0)
@@ -74,6 +74,8 @@ namespace Avalonia.Vulkan
                 enabledExtensions.Add(ExtDebugUtils.ExtensionName);
                 if (IsLayerAvailable(api, "VK_LAYER_KHRONOS_validation"))
                     enabledLayers.Add("VK_LAYER_KHRONOS_validation");
+                if (IsLayerAvailable(api, "VK_LAYER_RENDERDOC_Capture"))
+                    enabledLayers.Add("VK_LAYER_RENDERDOC_Capture");
             }
 
             var ppEnabledExtensions = stackalloc IntPtr[enabledExtensions.Count];

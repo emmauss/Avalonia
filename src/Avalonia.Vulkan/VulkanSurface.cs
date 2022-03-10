@@ -63,9 +63,9 @@ namespace Avalonia.Vulkan
             }
 
             if (surfaceFormats.Length == 1 && surfaceFormats[0].Format == Format.Undefined)
-                return new SurfaceFormatKHR(Format.B8G8R8A8Srgb, ColorSpaceKHR.ColorspaceSrgbNonlinearKhr);
+                return new SurfaceFormatKHR(Format.B8G8R8A8Unorm, ColorSpaceKHR.ColorspaceSrgbNonlinearKhr);
             foreach (var format in surfaceFormats)
-                if (format.Format == Format.B8G8R8A8Srgb &&
+                if (format.Format == Format.B8G8R8A8Unorm &&
                     format.ColorSpace == ColorSpaceKHR.ColorspaceSrgbNonlinearKhr)
                     return format;
 

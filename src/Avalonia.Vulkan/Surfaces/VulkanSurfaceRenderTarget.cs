@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Silk.NET.Vulkan;
 
 namespace Avalonia.Vulkan.Surfaces
@@ -29,6 +30,8 @@ namespace Avalonia.Vulkan.Surfaces
 
             ImageUsageFlags = ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
                               ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit;
+
+            SurfaceId = 0;
         }
 
         public Format Format { get; }
@@ -40,6 +43,9 @@ namespace Avalonia.Vulkan.Surfaces
         public ImageUsageFlags ImageUsageFlags { get; }
 
         public PixelSize Size { get; private set; }
+        public bool IsDisposed { get; private set; }
+
+        internal long SurfaceId { get; private set; }
 
         public void Dispose()
         {
@@ -47,6 +53,8 @@ namespace Avalonia.Vulkan.Surfaces
             DestroyImage();
             Display?.Dispose();
             Surface?.Dispose();
+
+            IsDisposed = true;
         }
 
         public VulkanSurfaceRenderingSession BeginDraw(float scaling)
@@ -64,6 +72,8 @@ namespace Avalonia.Vulkan.Surfaces
                 Image.TransitionLayout(ImageLayout.ColorAttachmentOptimal, AccessFlags.AccessNoneKhr);
             }
 
+            session.UpdateSurface();
+
             return session;
         }
 
@@ -77,6 +87,8 @@ namespace Avalonia.Vulkan.Surfaces
             Size = Surface.SurfaceSize;
 
             Image = new VulkanImage(_platformInterface.Device, _platformInterface.PhysicalDevice, _platformInterface.Device.CommandBufferPool, Format, Size, ImageUsageFlags);
+
+            SurfaceId++;
         }
 
         private void DestroyImage()

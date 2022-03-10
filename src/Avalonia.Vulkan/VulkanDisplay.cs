@@ -310,17 +310,24 @@ namespace Avalonia.Vulkan
         internal void BlitImageToCurrentImage(VulkanSurfaceRenderTarget renderTarget, CommandBuffer commandBuffer)
         {
             VulkanMemoryHelper.TransitionLayout(Device, commandBuffer,
-                renderTarget.Image.ApiHandle.Value, ImageLayout.ColorAttachmentOptimal,
+                renderTarget.Image.ApiHandle.Value, renderTarget.Image.CurrentLayout,
                 AccessFlags.AccessNoneKhr,
                 ImageLayout.TransferSrcOptimal,
                 AccessFlags.AccessTransferReadBit,
                 renderTarget.MipLevels);
 
-            var copyRegion = new ImageCopy
+            var srcBlitRegion = new ImageBlit
             {
-                SrcOffset = new Offset3D { X = 0, Y = 0, Z = 0 },
-                DstOffset = new Offset3D { X = 0, Y = 0, Z = 0 },
-                Extent = new Extent3D((uint?)Size.Width, (uint?)Size.Height, 1),
+                SrcOffsets = new ImageBlit.SrcOffsetsBuffer
+                {
+                    Element0 = new Offset3D(0, 0, 0),
+                    Element1 = new Offset3D(renderTarget.Size.Width, renderTarget.Size.Height, 1),
+                },
+                DstOffsets = new ImageBlit.DstOffsetsBuffer
+                {
+                    Element0 = new Offset3D(0, 0, 0),
+                    Element1 = new Offset3D(Size.Width, Size.Height, 1),
+                },
                 SrcSubresource =
                     new ImageSubresourceLayers
                     {
@@ -338,21 +345,21 @@ namespace Avalonia.Vulkan
                 }
             };
 
-            Device.Api.CmdCopyImage(commandBuffer, renderTarget.Image.ApiHandle.Value,
+            Device.Api.CmdBlitImage(commandBuffer, renderTarget.Image.ApiHandle.Value,
                 ImageLayout.TransferSrcOptimal,
                 _swapchainImages[_nextImage],
                 ImageLayout.TransferDstOptimal,
                 1,
-                copyRegion);
+                srcBlitRegion,
+                Filter.Linear
+                );
 
             VulkanMemoryHelper.TransitionLayout(Device, commandBuffer,
                 renderTarget.Image.ApiHandle.Value, ImageLayout.TransferSrcOptimal,
                 AccessFlags.AccessTransferReadBit,
-                ImageLayout.ColorAttachmentOptimal,
+                renderTarget.Image.CurrentLayout,
                 AccessFlags.AccessNoneKhr,
                 renderTarget.MipLevels);
-
-            return;
         }
 
         internal unsafe void EndPresentation(VulkanCommandBufferPool.VulkanCommandBuffer commandBuffer)

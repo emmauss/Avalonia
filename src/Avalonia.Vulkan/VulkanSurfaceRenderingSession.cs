@@ -20,6 +20,8 @@ namespace Avalonia.Vulkan
             Begin();
         }
 
+        private long _surfaceId;
+
         public VulkanDisplay Display { get; }
 
         public PixelSize Size => _renderTarget.Size;
@@ -28,6 +30,13 @@ namespace Avalonia.Vulkan
         public float Scaling { get; }
 
         public bool IsYFlipped { get; } = true;
+
+        public bool IsImageValid => _renderTarget.SurfaceId == _surfaceId;
+
+        public void UpdateSurface()
+        {
+            _surfaceId = _renderTarget.SurfaceId;
+        }
 
         public void Dispose()
         {

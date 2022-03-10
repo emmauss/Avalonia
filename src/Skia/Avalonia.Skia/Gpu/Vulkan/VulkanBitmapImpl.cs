@@ -42,6 +42,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
 
         public void Dispose()
         {
+            _surface?.Dispose();
+            _surface = null;
         }
 
         public void Save(string fileName)
@@ -62,6 +64,11 @@ namespace Avalonia.Skia.Gpu.Vulkan
                     return;
                 using (_surface.Lock())
                 {
+                    if (_surface.Image == null)
+                        return;
+
+                    _platformInterface.Device.QueueWaitIdle();
+
                     var imageInfo = new GRVkImageInfo()
                     {
                         CurrentQueueFamily = _platformInterface.PhysicalDevice.QueueFamilyIndex,
@@ -103,6 +110,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
         {
             lock (_lock)
             {
+                _surface?.Dispose();
+
                 _surface = surface;
             }
         }
@@ -118,6 +127,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
 
         public VulkanImage Image { get; set; }
 
+        private int _referenceCount;
+
         public VulkanBitmapAttachment(VulkanBitmapImpl bitmap, VulkanPlatformInterface platformInterface, Action presentCallback)
         {
             _bitmap = bitmap;
@@ -126,13 +137,21 @@ namespace Avalonia.Skia.Gpu.Vulkan
 
             Image = new VulkanImage(platformInterface.Device, platformInterface.PhysicalDevice, platformInterface.Device.CommandBufferPool, bitmap.Format, bitmap.PixelSize,
                 ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
-                              ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit);
+                              ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit, 1);
+
+            _referenceCount = 1;
         }
 
         public void Dispose()
         {
-            Image.Dispose();
-            _disposed = true;
+            _referenceCount--;
+
+            if (_referenceCount == 0)
+            {
+                Image.Dispose();
+                Image = null;
+                _disposed = true;
+            }
         }
 
         public void Present()
@@ -140,7 +159,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
             if (_disposed)
                 throw new ObjectDisposedException(nameof(VulkanBitmapAttachment));
 
-            _platformInterface.Device.QueueWaitIdle();
+            Image.TransitionLayout(ImageLayout.TransferSrcOptimal, AccessFlags.AccessNoneKhr);
+            _referenceCount++;
             _bitmap.Present(this);
             _presentCallback();
         }
