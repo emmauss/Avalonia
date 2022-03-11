@@ -26,13 +26,14 @@ namespace Avalonia.Vulkan
         public ImageAspectFlags AspectFlags { get; private set; }
         public ImageLayout CurrentLayout => _currentLayout;
 
-        public VulkanImage(VulkanDevice device, VulkanPhysicalDevice physicalDevice, VulkanCommandBufferPool commandBufferPool, Format format, PixelSize size, ImageUsageFlags imageUsageFlags)
+        public VulkanImage(VulkanDevice device, VulkanPhysicalDevice physicalDevice, VulkanCommandBufferPool commandBufferPool, Format format, PixelSize size, ImageUsageFlags imageUsageFlags, uint mipLevels = 0)
         {
             _device = device;
             _physicalDevice = physicalDevice;
             _commandBufferPool = commandBufferPool;
             Format = format;
             Size = size;
+            MipLevels = mipLevels;
             ImageUsageFlags = imageUsageFlags;
 
             Initialize();
@@ -42,7 +43,7 @@ namespace Avalonia.Vulkan
         {
             if (!ApiHandle.HasValue)
             {
-                MipLevels = (uint)Math.Floor(Math.Log(Math.Max(Size.Width, Size.Height), 2));
+                MipLevels = MipLevels != 0 ? MipLevels : (uint)Math.Floor(Math.Log(Math.Max(Size.Width, Size.Height), 2));
 
                 var imageCreateInfo = new ImageCreateInfo
                 {
