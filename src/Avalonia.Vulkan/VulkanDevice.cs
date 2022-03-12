@@ -77,6 +77,6 @@ namespace Avalonia.Vulkan
             }
         }
 
-        internal object Lock => _lock;
+        public object Lock => _lock;
     }
 }

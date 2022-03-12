@@ -37,17 +37,5 @@
     <ProjectReference Include="..\SampleControls\ControlSamples.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AvaloniaResource Update="Pages\VulkanPage.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </AvaloniaResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Pages\VulkanPage.xaml.cs">
-      <DependentUpon>%(Filename)</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
   <Import Project="..\..\build\BuildTargets.targets" />
 </Project>

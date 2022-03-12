@@ -74,6 +74,8 @@ namespace Avalonia.Vulkan
                 enabledExtensions.Add(ExtDebugUtils.ExtensionName);
                 if (IsLayerAvailable(api, "VK_LAYER_KHRONOS_validation"))
                     enabledLayers.Add("VK_LAYER_KHRONOS_validation");
+                if (IsLayerAvailable(api, "VK_LAYER_RENDERDOC_Capture"))
+                    enabledLayers.Add("VK_LAYER_KHRONOS_validation");
             }
 
             var ppEnabledExtensions = stackalloc IntPtr[enabledExtensions.Count];

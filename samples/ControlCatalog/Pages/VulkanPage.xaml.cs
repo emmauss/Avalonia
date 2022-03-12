@@ -96,18 +96,7 @@ namespace ControlCatalog.Pages
         private DeviceMemory _vertexBufferMemory;
         private Silk.NET.Vulkan.Buffer _indexBuffer;
         private DeviceMemory _indexBufferMemory;
-        private DescriptorSetLayout _vertextDescriptorSet;
-        private DescriptorSetLayout _fragmentDescriptorSet;
-        private DescriptorPool _descriptorPool;
         private Framebuffer _framebuffer;
-
-        private DescriptorSet[] _descriptorSets;
-        
-        private Silk.NET.Vulkan.Buffer _vertexUniformBuffer;
-        private DeviceMemory _vertexUniformBufferMemory;
-        
-        private Silk.NET.Vulkan.Buffer _fragmentUniformBuffer;
-        private DeviceMemory _fragmentUniformBufferMemory;
 
         private Image _depthImage;
         private DeviceMemory _depthImageMemory;
@@ -140,9 +129,28 @@ namespace ControlCatalog.Pages
 
             _previousImageSize = info.PixelSixe;
 
-            api.WaitForFences(device, 1, _fence, true, ulong.MaxValue);
-            
-            UpdateUniforms(api, device);
+            var view = Matrix4x4.CreateLookAt(new Vector3(25, 25, 25), new Vector3(), new Vector3(0, -1, 0));
+            var model = Matrix4x4.CreateFromYawPitchRoll(_yaw, _pitch, _roll);
+            var projection =
+                Matrix4x4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), (float)(Bounds.Width / Bounds.Height),
+                    0.01f, 1000);
+
+            var vertexConstant = new VertextPushConstant()
+            {
+                Disco = _disco,
+                Model = model,
+                Projection = projection,
+                Time = (float)St.Elapsed.TotalSeconds,
+                View = view
+            };
+
+            var fragConstant = new FragmentPushConstant()
+            {
+                Disco = _disco,
+                Time = (float)St.Elapsed.TotalSeconds,
+                MinY = _minY,
+                MaxY = _maxY,
+            };
 
             var commandBuffer = platformInterface.Device.CommandBufferPool.RentCommandBuffer();
             commandBuffer.BeginRecording();
@@ -158,26 +166,49 @@ namespace ControlCatalog.Pages
                     Y = 0
                 });
 
-            var clearColor = new ClearValue(new ClearColorValue(0, 0, 0, 0));
+            var scissor = new Rect2D();
 
-            var beginInfo = new RenderPassBeginInfo()
+            api.CmdSetScissor(commandBuffer.ApiHandle, 0, 1, &scissor);
+
+            var clearColor = new ClearValue(new ClearColorValue(0, 0, 0, 0), new ClearDepthStencilValue(0, 0));
+
+            var clearValues = new[] { clearColor, clearColor };
+
+
+            fixed (ClearValue* clearValue = clearValues)
             {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = _renderPass,
-                Framebuffer = _framebuffer,
-                RenderArea = new Rect2D(new Offset2D(0, 0), new Extent2D((uint?)Bounds.Width, (uint?)Bounds.Height)),
-                ClearValueCount = 1,
-                PClearValues = &clearColor
-            };
+                var beginInfo = new RenderPassBeginInfo()
+                {
+                    SType = StructureType.RenderPassBeginInfo,
+                    RenderPass = _renderPass,
+                    Framebuffer = _framebuffer,
+                    RenderArea = new Rect2D(new Offset2D(0, 0), new Extent2D((uint?)Bounds.Width, (uint?)Bounds.Height)),
+                    ClearValueCount = 2,
+                    PClearValues = clearValue
+                };
 
-            api.CmdBeginRenderPass(commandBuffer.ApiHandle, beginInfo, SubpassContents.Inline);
+                api.CmdBeginRenderPass(commandBuffer.ApiHandle, beginInfo, SubpassContents.Inline);
+            }
 
             api.CmdBindPipeline(commandBuffer.ApiHandle, PipelineBindPoint.Graphics, _pipeline);
 
+            api.CmdPushConstants(commandBuffer.ApiHandle, _pipelineLayout, ShaderStageFlags.ShaderStageVertexBit, 0, (uint)Marshal.SizeOf<VertextPushConstant>(), &vertexConstant);
+            api.CmdPushConstants(commandBuffer.ApiHandle, _pipelineLayout, ShaderStageFlags.ShaderStageFragmentBit, (uint)Marshal.SizeOf<VertextPushConstant>(), (uint)Marshal.SizeOf<FragmentPushConstant>(), &fragConstant);
+
+            api.CmdBindVertexBuffers(commandBuffer.ApiHandle, 0, 1, _vertexBuffer, 0);
+            api.CmdBindIndexBuffer(commandBuffer.ApiHandle, _indexBuffer, 0, IndexType.Uint16);
+
             api.CmdDrawIndexed(commandBuffer.ApiHandle, (uint) _indices.Length, 1, 0, 0, 0);
+
+            api.CmdEndRenderPass(commandBuffer.ApiHandle);
 
             api.ResetFences(device, 1, _fence);
             commandBuffer.Submit(null, null, null, _fence);
+
+            api.WaitForFences(device, 1, _fence, true, ulong.MaxValue);
+
+            if (_disco > 0.01)
+                Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background);
         }
 
         protected unsafe override void OnVulkanDeinit(VulkanPlatformInterface platformInterface, VulkanImageInfo info)
@@ -199,17 +230,6 @@ namespace ControlCatalog.Pages
                 
                 api.DestroyBuffer(device, _indexBuffer, null);
                 api.FreeMemory(device, _indexBufferMemory, null);
-                
-                api.DestroyBuffer(device, _vertexUniformBuffer, null);
-                api.FreeMemory(device, _vertexUniformBufferMemory, null);
-                
-                api.DestroyBuffer(device, _fragmentUniformBuffer, null);
-                api.FreeMemory(device, _fragmentUniformBufferMemory, null);
-                
-                api.DestroyDescriptorSetLayout(device, _vertextDescriptorSet, null);
-                api.DestroyDescriptorSetLayout(device, _fragmentDescriptorSet, null);
-                
-                api.DestroyDescriptorPool(device, _descriptorPool, null);
                 api.DestroyFence(device, _fence, null);
             }
         }
@@ -506,22 +526,40 @@ namespace ControlCatalog.Pages
                     var dynamicStateCreateInfo = new PipelineDynamicStateCreateInfo()
                     {
                         SType = StructureType.PipelineDynamicStateCreateInfo,
-                        DynamicStateCount = (uint)dynamicStates.Length, PDynamicStates = states
+                        DynamicStateCount = (uint)dynamicStates.Length,
+                        PDynamicStates = states
                     };
 
-                    var sets = new[] { _vertextDescriptorSet, _fragmentDescriptorSet };
+                    var vertexPushConstantRange = new PushConstantRange()
+                    {
+                        Offset = 0,
+                        Size = (uint)Marshal.SizeOf<VertextPushConstant>(),
+                        StageFlags = ShaderStageFlags.ShaderStageVertexBit
+                    };
 
-                    fixed (DescriptorSetLayout* set = sets)
+                    var fragPushConstantRange = new PushConstantRange()
+                    {
+                        Offset = vertexPushConstantRange.Size,
+                        Size = (uint)Marshal.SizeOf<FragmentPushConstant>(),
+                        StageFlags = ShaderStageFlags.ShaderStageFragmentBit
+                    };
+
+                    var constants = new[] { vertexPushConstantRange, fragPushConstantRange };
+
+                    fixed (PushConstantRange* constant = constants)
                     {
                         var pipelineLayoutCreateInfo = new PipelineLayoutCreateInfo()
                         {
-                            SType = StructureType.PipelineLayoutCreateInfo, SetLayoutCount = 2,
-                            PSetLayouts = set
+                            SType = StructureType.PipelineLayoutCreateInfo,
+                            PushConstantRangeCount = (uint)constants.Length,
+                            PPushConstantRanges = constant,
+                            SetLayoutCount = 0
                         };
 
                         api.CreatePipelineLayout(device, pipelineLayoutCreateInfo, null, out _pipelineLayout)
                             .ThrowOnError();
                     }
+
 
                     fixed (PipelineShaderStageCreateInfo* stPtr = stages)
                     {
@@ -544,7 +582,7 @@ namespace ControlCatalog.Pages
                             BasePipelineHandle = _pipeline.Handle != 0 ? _pipeline : new Pipeline(),
                             BasePipelineIndex = _pipeline.Handle != 0 ? 0 : -1
                         };
-                        
+
                         api.CreateGraphicsPipelines(device, new PipelineCache(), 1, &pipelineCreateInfo, null, out _pipeline).ThrowOnError();
                     }
                 }
@@ -594,109 +632,6 @@ namespace ControlCatalog.Pages
                 api.UnmapMemory(device, _vertexBufferMemory);
             }
 
-            // uniform buffer
-            //vertex stage
-            var modelLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 0,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageVertexBit
-            };
-            var projectionLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 1,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageVertexBit
-            };
-            var viewLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 2,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageVertexBit
-            };
-            var timeLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 3,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageVertexBit
-            };
-            var discoLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 4,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageVertexBit
-            };
-
-            var vertexUniformBindings = new[]
-            {
-                modelLayoutBinding, projectionLayoutBinding, viewLayoutBinding, timeLayoutBinding,
-                discoLayoutBinding
-            };
-
-            fixed (DescriptorSetLayoutBinding* bindings = vertexUniformBindings)
-            {
-                var layoutInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = (uint)vertexUniformBindings.Length,
-                    PBindings = bindings
-                };
-
-                api.CreateDescriptorSetLayout(device, layoutInfo, null, out _vertextDescriptorSet).ThrowOnError();
-            }
-
-            //fragment stage
-            var maxYLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 0,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageFragmentBit
-            };
-            var minYLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 1,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageFragmentBit
-            };
-            timeLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 2,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageFragmentBit
-            };
-            discoLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 3,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.ShaderStageFragmentBit
-            };
-
-            var fragmentUniformBindings = new[]
-            {
-                maxYLayoutBinding, minYLayoutBinding, timeLayoutBinding, discoLayoutBinding
-            };
-
-            fixed (DescriptorSetLayoutBinding* bindings = fragmentUniformBindings)
-            {
-                var layoutInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = (uint)fragmentUniformBindings.Length,
-                    PBindings = bindings
-                };
-
-                api.CreateDescriptorSetLayout(device, layoutInfo, null, out _fragmentDescriptorSet).ThrowOnError();
-            }
-
             var indexSize = Marshal.SizeOf<ushort>();
 
             bufferInfo = new BufferCreateInfo()
@@ -733,312 +668,6 @@ namespace ControlCatalog.Pages
                 Buffer.MemoryCopy(indice, pointer, bufferInfo.Size, bufferInfo.Size);
                 api.UnmapMemory(device, _indexBufferMemory);
             }
-
-            var bufferSize = Marshal.SizeOf<VertexUniformBufferObject>();
-
-            bufferInfo = new BufferCreateInfo()
-            {
-                SType = StructureType.BufferCreateInfo,
-                Size = (ulong)bufferSize,
-                Usage = BufferUsageFlags.BufferUsageUniformBufferBit,
-                SharingMode = SharingMode.Exclusive
-            };
-
-            api.CreateBuffer(device, bufferInfo, null, out _vertexUniformBuffer).ThrowOnError();
-
-            api.GetBufferMemoryRequirements(device, _vertexUniformBuffer, out memoryRequirements);
-
-            memoryAllocateInfo = new MemoryAllocateInfo
-            {
-                SType = StructureType.MemoryAllocateInfo,
-                AllocationSize = memoryRequirements.Size,
-                MemoryTypeIndex = (uint)FindSuitableMemoryTypeIndex(api,
-                    platformInterface.PhysicalDevice.ApiHandle,
-                    memoryRequirements.MemoryTypeBits,
-                    MemoryPropertyFlags.MemoryPropertyHostCoherentBit |
-                    MemoryPropertyFlags.MemoryPropertyHostVisibleBit)
-            };
-
-            api.AllocateMemory(device, memoryAllocateInfo, null, out _vertexUniformBufferMemory).ThrowOnError();
-            api.BindBufferMemory(device, _vertexUniformBuffer, _vertexUniformBufferMemory, 0);
-
-            fixed (ushort* indice = _indices)
-            {
-                void* pointer = null;
-                api.MapMemory(device, _vertexUniformBufferMemory, 0, bufferInfo.Size, 0, ref pointer);
-
-                Buffer.MemoryCopy(indice, pointer, bufferInfo.Size, bufferInfo.Size);
-                api.UnmapMemory(device, _vertexUniformBufferMemory);
-            }
-
-            bufferSize = Marshal.SizeOf<FragmentUniformBufferObject>();
-
-            bufferInfo = new BufferCreateInfo()
-            {
-                SType = StructureType.BufferCreateInfo,
-                Size = (ulong)bufferSize,
-                Usage = BufferUsageFlags.BufferUsageUniformBufferBit,
-                SharingMode = SharingMode.Exclusive
-            };
-
-            api.CreateBuffer(device, bufferInfo, null, out _fragmentUniformBuffer).ThrowOnError();
-
-            api.GetBufferMemoryRequirements(device, _fragmentUniformBuffer, out memoryRequirements);
-
-            memoryAllocateInfo = new MemoryAllocateInfo
-            {
-                SType = StructureType.MemoryAllocateInfo,
-                AllocationSize = memoryRequirements.Size,
-                MemoryTypeIndex = (uint)FindSuitableMemoryTypeIndex(api,
-                    platformInterface.PhysicalDevice.ApiHandle,
-                    memoryRequirements.MemoryTypeBits,
-                    MemoryPropertyFlags.MemoryPropertyHostCoherentBit |
-                    MemoryPropertyFlags.MemoryPropertyHostVisibleBit)
-            };
-
-            api.AllocateMemory(device, memoryAllocateInfo, null, out _fragmentUniformBufferMemory).ThrowOnError();
-            api.BindBufferMemory(device, _fragmentUniformBuffer, _fragmentUniformBufferMemory, 0);
-
-            fixed (ushort* indice = _indices)
-            {
-                void* pointer = null;
-                api.MapMemory(device, _fragmentUniformBufferMemory, 0, bufferInfo.Size, 0, ref pointer);
-
-                Buffer.MemoryCopy(indice, pointer, bufferInfo.Size, bufferInfo.Size);
-                api.UnmapMemory(device, _fragmentUniformBufferMemory);
-            }
-
-            //Descriptor pool
-            var poolSize = new DescriptorPoolSize() { DescriptorCount = 2 };
-            var sets = new[] { _vertextDescriptorSet, _fragmentDescriptorSet };
-
-            var descriptorPoolCreateInfo = new DescriptorPoolCreateInfo()
-            {
-                SType = StructureType.DescriptorPoolCreateInfo,
-                PoolSizeCount = 1,
-                PPoolSizes = &poolSize,
-                MaxSets = 2
-            };
-
-            api.CreateDescriptorPool(device, descriptorPoolCreateInfo, null, out _descriptorPool).ThrowOnError();
-            _descriptorSets = new DescriptorSet[sets.Length];
-
-            fixed (DescriptorSetLayout* set = sets)
-            {
-                var descriptorSetAllocationInfo = new DescriptorSetAllocateInfo()
-                {
-                    SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = _descriptorPool,
-                    DescriptorSetCount = (uint)sets.Length,
-                    PSetLayouts = set
-                };
-
-                fixed (DescriptorSet* descSet = _descriptorSets)
-                {
-                    api.AllocateDescriptorSets(device, &descriptorSetAllocationInfo, descSet);
-                }
-            }
-
-            var descriptorSet = _descriptorSets[0];
-
-            var modelBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = 0, Buffer = _vertexUniformBuffer, Range = (ulong)Marshal.SizeOf<Matrix4x4>()
-            };
-            var modelWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 0,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &modelBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var projBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<VertexUniformBufferObject>("Projection"),
-                Buffer = _vertexUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<Matrix4x4>()
-            };
-            var projectWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 1,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &projBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var viewBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<VertexUniformBufferObject>("View"),
-                Buffer = _vertexUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<Matrix4x4>()
-            };
-            var viewWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 2,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &viewBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var timeBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<VertexUniformBufferObject>("Time"),
-                Buffer = _vertexUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<float>()
-            };
-            var timeWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 2,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &timeBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var discoBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<VertexUniformBufferObject>("Disco"),
-                Buffer = _vertexUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<float>()
-            };
-            var discoWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 2,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &discoBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var writes = new[]
-            {
-                modelWriteDescSet, projectWriteDescSet, viewWriteDescSet, timeWriteDescSet, discoWriteDescSet
-            };
-
-            fixed (WriteDescriptorSet* write = writes)
-            {
-                api.UpdateDescriptorSets(device, (uint)writes.Length, write, 0, null);
-            }
-            
-            descriptorSet = _descriptorSets[1];
-
-            var maxYBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = 0, Buffer = _fragmentUniformBuffer, Range = (ulong)Marshal.SizeOf<float>()
-            };
-            var maxYWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 0,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &maxYBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            var minYBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<FragmentUniformBufferObject>("MinY"),
-                Buffer = _fragmentUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<float>()
-            };
-            var minYWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 1,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &minYBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            timeBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<FragmentUniformBufferObject>("Time"),
-                Buffer = _fragmentUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<float>()
-            };
-            timeWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 2,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &timeBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            discoBufferInfo = new DescriptorBufferInfo()
-            {
-                Offset = (ulong) Marshal.OffsetOf<FragmentUniformBufferObject>("Disco"),
-                Buffer = _fragmentUniformBuffer,
-                Range = (ulong)Marshal.SizeOf<float>()
-            };
-            discoWriteDescSet = new WriteDescriptorSet()
-            {
-                SType = StructureType.WriteDescriptorSet, DstSet = descriptorSet,
-                DstBinding = 2,
-                DescriptorCount = 1,
-                DstArrayElement = 0,
-                PBufferInfo = &discoBufferInfo,
-                DescriptorType = DescriptorType.UniformBuffer
-            };
-            writes = new[]
-            {
-                modelWriteDescSet, projectWriteDescSet, viewWriteDescSet, timeWriteDescSet, discoWriteDescSet
-            };
-
-            // TODO use push constants
-            fixed (WriteDescriptorSet* write = writes)
-            {
-                api.UpdateDescriptorSets(device, (uint)writes.Length, write, 0, null);
-            }
-        }
-
-        private unsafe void UpdateUniforms(Vk api, Device device)
-        {
-            var view = Matrix4x4.CreateLookAt(new Vector3(25, 25, 25), new Vector3(), new Vector3(0, -1, 0));
-            var model = Matrix4x4.CreateFromYawPitchRoll(_yaw, _pitch, _roll);
-            var projection =
-                Matrix4x4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), (float)(Bounds.Width / Bounds.Height),
-                    0.01f, 1000);
-            
-            // update vertex uniform
-            var vubo = new VertexUniformBufferObject()
-            {
-                Disco = this.Disco,
-                Time = (float) St.Elapsed.TotalSeconds,
-                Model = model,
-                Projection = projection,
-                View = view
-            };
-
-            var bufferSize = (ulong)Marshal.SizeOf<VertexUniformBufferObject>();
-
-            void* pointer = null;
-            api.MapMemory(device, _vertexUniformBufferMemory, 0, bufferSize, 0,
-                ref pointer);
-            Buffer.MemoryCopy(&vubo, pointer, bufferSize, bufferSize);
-            api.UnmapMemory(device, _vertexUniformBufferMemory);
-            
-            // update fragment uniform
-            var fubo = new FragmentUniformBufferObject()
-            {
-                Disco = this.Disco,
-                Time = (float) St.Elapsed.TotalSeconds,
-                MaxY = _maxY,
-                MinY = _minY
-            };
-
-            bufferSize = (ulong)Marshal.SizeOf<FragmentUniformBufferObject>();
-
-            pointer = null;
-            api.MapMemory(device, _fragmentUniformBufferMemory, 0, bufferSize, 0,
-                ref pointer);
-            Buffer.MemoryCopy(&fubo, pointer, bufferSize, bufferSize);
-            api.UnmapMemory(device, _fragmentUniformBufferMemory);
-
         }
 
         private static int FindSuitableMemoryTypeIndex(Vk api, PhysicalDevice physicalDevice, uint memoryTypeBits,
@@ -1118,7 +747,7 @@ namespace ControlCatalog.Pages
                     return new VertexInputBindingDescription()
                     {
                         Binding = 0,
-                        Stride = (uint)sizeof(Vertex),
+                        Stride = (uint)Marshal.SizeOf<Vertex>(),
                         InputRate = VertexInputRate.Vertex
                     };
                 }
@@ -1133,7 +762,7 @@ namespace ControlCatalog.Pages
                             Binding = 0,
                             Location = 0,
                             Format = Format.R32G32B32Sfloat,
-                            Offset = 0,
+                            Offset = (uint)Marshal.OffsetOf<Vertex>("Position")
                         },
                          new VertexInputAttributeDescription{
                             Binding = 0,
@@ -1156,7 +785,7 @@ namespace ControlCatalog.Pages
         private bool _isInit;
         
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
-        private struct VertexUniformBufferObject
+        private struct VertextPushConstant
         {
             public Matrix4x4 Model;
             public Matrix4x4 Projection;
@@ -1166,8 +795,8 @@ namespace ControlCatalog.Pages
             public float Disco;
         }
         
-        [StructLayout(LayoutKind.Sequential)]
-        private struct FragmentUniformBufferObject
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        private struct FragmentPushConstant
         {
             public float MaxY;
             public float MinY;

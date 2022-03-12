@@ -62,6 +62,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
                     return;
                 using (_surface.Lock())
                 {
+                    _platformInterface.Device.QueueWaitIdle();
+
                     var imageInfo = new GRVkImageInfo()
                     {
                         CurrentQueueFamily = _platformInterface.PhysicalDevice.QueueFamilyIndex,
@@ -140,7 +142,7 @@ namespace Avalonia.Skia.Gpu.Vulkan
             if (_disposed)
                 throw new ObjectDisposedException(nameof(VulkanBitmapAttachment));
 
-            _platformInterface.Device.QueueWaitIdle();
+            Image.TransitionLayout(ImageLayout.TransferSrcOptimal, AccessFlags.AccessNoneKhr);
             _bitmap.Present(this);
             _presentCallback();
         }

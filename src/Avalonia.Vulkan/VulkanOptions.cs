@@ -13,7 +13,7 @@ namespace Avalonia.Vulkan
         /// <summary>
         /// Specifies the vulkan api version to use
         /// </summary>
-        public Version VulkanVersion{ get; set; } =  new Version(1, 0);
+        public Version VulkanVersion{ get; set; } =  new Version(1, 2);
         
         /// <summary>
         /// Specifies additional extensions to enable if available on the instance

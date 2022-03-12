@@ -310,7 +310,7 @@ namespace Avalonia.Vulkan
         internal void BlitImageToCurrentImage(VulkanSurfaceRenderTarget renderTarget, CommandBuffer commandBuffer)
         {
             VulkanMemoryHelper.TransitionLayout(Device, commandBuffer,
-                renderTarget.Image.ApiHandle.Value, ImageLayout.ColorAttachmentOptimal,
+                renderTarget.Image.ApiHandle.Value, renderTarget.Image.CurrentLayout,
                 AccessFlags.AccessNoneKhr,
                 ImageLayout.TransferSrcOptimal,
                 AccessFlags.AccessTransferReadBit,
@@ -348,7 +348,7 @@ namespace Avalonia.Vulkan
             VulkanMemoryHelper.TransitionLayout(Device, commandBuffer,
                 renderTarget.Image.ApiHandle.Value, ImageLayout.TransferSrcOptimal,
                 AccessFlags.AccessTransferReadBit,
-                ImageLayout.ColorAttachmentOptimal,
+                renderTarget.Image.CurrentLayout,
                 AccessFlags.AccessNoneKhr,
                 renderTarget.MipLevels);
 
