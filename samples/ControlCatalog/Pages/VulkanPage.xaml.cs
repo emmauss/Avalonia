@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using Silk.NET.Vulkan;
 using Buffer = System.Buffer;
 using Image = Silk.NET.Vulkan.Image;
+using Silk.NET.Core;
 
 // ReSharper disable StringLiteralTypo
 
@@ -700,13 +701,20 @@ namespace ControlCatalog.Pages
 
             return -1;
         }
-        
+
         protected unsafe override void OnVulkanInit(VulkanPlatformInterface platformInterface, VulkanImageInfo info)
         {
             base.OnVulkanInit(platformInterface, info);
 
             var api = platformInterface.Instance.Api;
             var device = platformInterface.Device.ApiHandle;
+
+            var props = platformInterface.PhysicalDevice.Properties;
+
+            var deviceName = Marshal.PtrToStringAnsi((IntPtr)props.DeviceName);
+            var version = (Version32)props.ApiVersion;
+
+            Info = $"Renderer: {deviceName} Version: {version.Major}.{version.Minor}.{version.Patch}";
 
             var vertShaderData = GetShader(false);
             var fragShaderData = GetShader(true);
@@ -734,14 +742,15 @@ namespace ControlCatalog.Pages
 
                 api.CreateShaderModule(device, shaderCreateInfo, null, out _fragShader);
             }
-            
+
             CreateBuffers(api, device, platformInterface);
 
             CreateTemporalObjects(api, device, info, platformInterface.PhysicalDevice.ApiHandle);
 
             var fenceCreateInfo = new FenceCreateInfo()
             {
-                SType = StructureType.FenceCreateInfo, Flags = FenceCreateFlags.FenceCreateSignaledBit
+                SType = StructureType.FenceCreateInfo,
+                Flags = FenceCreateFlags.FenceCreateSignaledBit
             };
 
             api.CreateFence(device, fenceCreateInfo, null, out _fence);

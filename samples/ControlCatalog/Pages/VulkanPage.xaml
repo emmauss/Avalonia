@@ -5,7 +5,7 @@
   <Grid>
     <pages:VulkanPageControl x:Name="Vulkan"/>
     <StackPanel>
-      <TextBlock Text="Vulkan Test"/>
+      <TextBlock Text="{Binding Info, ElementName=Vulkan}"/>
     </StackPanel>
     <Grid ColumnDefinitions="*,Auto" Margin="20">
       <StackPanel Grid.Column="1" MinWidth="300">

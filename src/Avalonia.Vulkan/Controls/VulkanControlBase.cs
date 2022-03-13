@@ -15,6 +15,7 @@ namespace Avalonia.Vulkan.Controls
         private VulkanPlatformInterface _platformInterface;
         private VulkanBitmap _bitmap;
         private IVulkanBitmapAttachment _attachment;
+        private IVulkanBitmapAttachment _oldAttachment;
         private bool _initialized;
 
         public sealed override void Render(DrawingContext context)
@@ -24,6 +25,10 @@ namespace Avalonia.Vulkan.Controls
 
             lock (_platformInterface.Device.Lock)
             {
+                _oldAttachment?.Dispose();
+                _oldAttachment = null;
+                _platformInterface.Device.QueueWaitIdle();
+
                 EnsureTextureAttachment();
 
                 OnVulkanRender(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
@@ -39,8 +44,8 @@ namespace Avalonia.Vulkan.Controls
             if (_platformInterface != null)
                 if (_bitmap == null || _attachment == null || _bitmap.PixelSize != GetPixelSize())
                 {
-                    _attachment?.Dispose();
-                    _attachment = null;
+                    _oldAttachment?.Dispose();
+                    _oldAttachment = _attachment;
                     _bitmap?.Dispose();
                     _bitmap = null;
                     _bitmap = new VulkanBitmap(GetPixelSize(), new Vector(96, 96));
@@ -67,6 +72,8 @@ namespace Avalonia.Vulkan.Controls
                 {
                     _attachment?.Dispose();
                     _bitmap?.Dispose();
+                    _oldAttachment?.Dispose();
+                    _oldAttachment = null;
 
                     _attachment = null;
                     _bitmap = null;
