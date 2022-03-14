@@ -29,7 +29,7 @@ namespace Avalonia.Android.Vulkan
                 var createInfo = new AndroidSurfaceCreateInfoKHR() {
                     Window = (nint*)window, SType = StructureType.AndroidSurfaceCreateInfoKhr };
 
-                surfaceExtension.CreateAndroidSurface(new Instance(instance.ApiHandle), createInfo, null, out var surface).ThrowOnError();
+                surfaceExtension.CreateAndroidSurface(new Instance(instance.Handle), createInfo, null, out var surface).ThrowOnError();
 
                 return surface;
             }
