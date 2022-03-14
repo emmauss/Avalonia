@@ -29,7 +29,7 @@ namespace Avalonia.Vulkan.Imaging
             if (!(AvaloniaLocator.Current.GetService<IPlatformRenderInterface>() is IVulkanAwarePlatformRenderInterface
                 platformRenderInterface))
                 throw new PlatformNotSupportedException("Rendering platform does not support Vulkan integration");
-            return platformRenderInterface.CreateVulkamBitmap(platformInterface, size, dpi, Format.B8G8R8A8Unorm);
+            return platformRenderInterface.CreateVulkanBitmap(platformInterface, size, dpi, (uint) Format.B8G8R8A8Unorm);
         }
 
         public IVulkanBitmapAttachment CreateFramebufferAttachment(VulkanPlatformInterface platformInterface) =>

@@ -9,8 +9,21 @@ namespace Avalonia.Vulkan.Surfaces
         private readonly VulkanPlatformInterface _platformInterface;
 
         private bool _shouldRecreate = true;
+        private readonly Format _format;
+        private VulkanImage _image;
+        private readonly bool _isRgba;
+        private readonly VulkanDisplay _display;
+        private readonly VulkanSurface _surface;
+        private readonly ImageUsageFlags _imageUsageFlags;
+        private PixelSize _size;
+        private bool _isDisposed;
+        private long _surfaceId;
 
-        public VulkanImage Image { get; private set; }
+        public VulkanImage Image
+        {
+            get => _image;
+            private set => _image = value;
+        }
 
         public uint MipLevels => Image.MipLevels;
 
@@ -18,34 +31,49 @@ namespace Avalonia.Vulkan.Surfaces
         {
             _platformInterface = platformInterface;
 
-            Display = VulkanDisplay.CreateDisplay(platformInterface.Instance, platformInterface.Device,
+            _display = VulkanDisplay.CreateDisplay(platformInterface.Instance, platformInterface.Device,
                 platformInterface.PhysicalDevice, surface);
-            Surface = surface;
+            _surface = surface;
 
             // Skia seems to only create surfaces from images with unorm format
-            Format = Display.SurfaceFormat.Format >= Format.R8G8B8A8Unorm &&
-                     Display.SurfaceFormat.Format <= Format.R8G8B8A8Srgb ?
-                Format.R8G8B8A8Unorm :
-                Format.B8G8R8A8Unorm;
 
-            ImageUsageFlags = ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
-                              ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit;
+            _isRgba = Display.SurfaceFormat.Format >= Format.R8G8B8A8Unorm &&
+                     Display.SurfaceFormat.Format <= Format.R8G8B8A8Srgb;
+            
+            _format = IsRgba ? Format.R8G8B8A8Unorm : Format.B8G8R8A8Unorm;
 
             SurfaceId = 0;
         }
 
-        public Format Format { get; }
+        public bool IsRgba => _isRgba;
+
+        public uint ImageFormat => (uint) _format;
+
         public ulong MemorySize => Image.MemorySize;
 
-        public VulkanDisplay Display { get; }
-        public VulkanSurface Surface { get; }
+        public VulkanDisplay Display => _display;
 
-        public ImageUsageFlags ImageUsageFlags { get; }
+        public VulkanSurface Surface => _surface;
 
-        public PixelSize Size { get; private set; }
-        public bool IsDisposed { get; private set; }
+        public uint UsageFlags => (uint) _imageUsageFlags;
 
-        internal long SurfaceId { get; private set; }
+        public PixelSize Size
+        {
+            get => _size;
+            private set => _size = value;
+        }
+
+        public bool IsDisposed
+        {
+            get => _isDisposed;
+            private set => _isDisposed = value;
+        }
+
+        internal long SurfaceId
+        {
+            get => _surfaceId;
+            private set => _surfaceId = value;
+        }
 
         public void Dispose()
         {
@@ -82,11 +110,11 @@ namespace Avalonia.Vulkan.Surfaces
             _shouldRecreate = true;
         }
 
-        private unsafe void CreateImage()
+        private void CreateImage()
         {
             Size = Surface.SurfaceSize;
 
-            Image = new VulkanImage(_platformInterface.Device, _platformInterface.PhysicalDevice, _platformInterface.Device.CommandBufferPool, Format, Size, ImageUsageFlags);
+            Image = new VulkanImage(_platformInterface.Device, _platformInterface.PhysicalDevice, _platformInterface.Device.CommandBufferPool, ImageFormat, Size);
 
             SurfaceId++;
         }

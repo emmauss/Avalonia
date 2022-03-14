@@ -3,7 +3,7 @@ using Silk.NET.Vulkan;
 
 namespace Avalonia.Vulkan
 {
-    public class VulkanSemaphorePair : IDisposable
+    internal class VulkanSemaphorePair : IDisposable
     {
         private readonly VulkanDevice _device;
 
@@ -13,20 +13,20 @@ namespace Avalonia.Vulkan
 
             var semaphoreCreateInfo = new SemaphoreCreateInfo { SType = StructureType.SemaphoreCreateInfo };
 
-            _device.Api.CreateSemaphore(_device.ApiHandle, semaphoreCreateInfo, null, out var semaphore).ThrowOnError();
+            _device.Api.CreateSemaphore(_device.InternalHandle, semaphoreCreateInfo, null, out var semaphore).ThrowOnError();
             ImageAvailableSemaphore = semaphore;
 
-            _device.Api.CreateSemaphore(_device.ApiHandle, semaphoreCreateInfo, null, out semaphore).ThrowOnError();
+            _device.Api.CreateSemaphore(_device.InternalHandle, semaphoreCreateInfo, null, out semaphore).ThrowOnError();
             RenderFinishedSemaphore = semaphore;
         }
 
-        public Semaphore ImageAvailableSemaphore { get; }
-        public Semaphore RenderFinishedSemaphore { get; }
+        internal Semaphore ImageAvailableSemaphore { get; }
+        internal Semaphore RenderFinishedSemaphore { get; }
 
         public unsafe void Dispose()
         {
-            _device.Api.DestroySemaphore(_device.ApiHandle, ImageAvailableSemaphore, null);
-            _device.Api.DestroySemaphore(_device.ApiHandle, RenderFinishedSemaphore, null);
+            _device.Api.DestroySemaphore(_device.InternalHandle, ImageAvailableSemaphore, null);
+            _device.Api.DestroySemaphore(_device.InternalHandle, RenderFinishedSemaphore, null);
         }
     }
 }

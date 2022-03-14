@@ -17,6 +17,6 @@ namespace Avalonia.Vulkan
         /// <param name="physicalDevice">The selected vulkan physical device</param>
         /// <param name="options">The VulkanOptions provided during initialization</param>
         /// <returns>The vulkan logical device</returns>
-        Device CreateDevice(Vk api, Instance instance, VulkanPhysicalDevice physicalDevice, VulkanOptions options);
+        Device CreateDevice(Vk api, VulkanInstance instance, VulkanPhysicalDevice physicalDevice, VulkanOptions options);
     }
 }

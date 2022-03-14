@@ -1,7 +1,6 @@
 using System;
 using Avalonia.Vulkan;
 using Avalonia.Vulkan.Surfaces;
-using Silk.NET.Vulkan;
 using SkiaSharp;
 
 namespace Avalonia.Skia
@@ -50,17 +49,17 @@ namespace Avalonia.Skia
                     var imageInfo = new GRVkImageInfo()
                     {
                         CurrentQueueFamily = disp.QueueFamilyIndex,
-                        Format = (uint)_surface.Format,
-                        Image = _surface.Image.ApiHandle.Value.Handle,
+                        Format = _surface.ImageFormat,
+                        Image = _surface.Image.Handle,
                         ImageLayout = (uint)_surface.Image.CurrentLayout,
-                        ImageTiling = (uint)ImageTiling.Optimal,
-                        ImageUsageFlags = (uint)_surface.ImageUsageFlags,
+                        ImageTiling = (uint)_surface.Image.Tiling,
+                        ImageUsageFlags = _surface.UsageFlags,
                         LevelCount = _surface.MipLevels,
                         SampleCount = 1,
                         Protected = false,
                         Alloc = new GRVkAlloc()
                         {
-                            Memory = _surface.Image.ImageMemory.Handle,
+                            Memory = _surface.Image.MemoryHandle,
                             Flags = 0,
                             Offset = 0,
                             Size = _surface.MemorySize
@@ -72,7 +71,7 @@ namespace Avalonia.Skia
                             imageInfo);
                     var surface = SKSurface.Create(GrContext, renderTarget,
                         session.IsYFlipped ? GRSurfaceOrigin.TopLeft : GRSurfaceOrigin.BottomLeft,
-                        IsRgba(_surface.Format) ? SKColorType.Rgba8888 : SKColorType.Bgra8888, SKColorSpace.CreateSrgb());
+                        _surface.IsRgba ? SKColorType.Rgba8888 : SKColorType.Bgra8888, SKColorSpace.CreateSrgb());
 
                     if (surface == null)
                         throw new InvalidOperationException(
@@ -88,11 +87,6 @@ namespace Avalonia.Skia
                 if (!success)
                     session.Dispose();
             }
-        }
-
-        private bool IsRgba(Format format)
-        {
-            return format >= Format.R8G8B8A8Unorm && format <= Format.R8G8B8A8Srgb;
         }
 
         public bool IsCorrupted { get; }
@@ -117,7 +111,7 @@ namespace Avalonia.Skia
 
             public void Dispose()
             {
-                lock (_vulkanSession.Display.Device.Lock)
+                lock (_vulkanSession.Display.Lock)
                 {
                     if (_vulkanSession.IsImageValid)
                     {

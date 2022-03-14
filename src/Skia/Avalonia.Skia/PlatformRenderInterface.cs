@@ -13,7 +13,6 @@ using Avalonia.Platform;
 using Avalonia.Visuals.Media.Imaging;
 using Avalonia.Vulkan;
 using Avalonia.Vulkan.Imaging;
-using Silk.NET.Vulkan;
 using SkiaSharp;
 
 namespace Avalonia.Skia
@@ -312,7 +311,7 @@ namespace Avalonia.Skia
                 "Current GPU acceleration backend does not support OpenGL integration");
         }
 
-        public IVulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, Format format)
+        public IVulkanBitmapImpl CreateVulkanBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
         {
             if (_skiaGpu is VulkanSkiaGpu vulkanGpu)
                 return vulkanGpu.CreateVulkamBitmap(platformInterface, pixelSize, dpi, format);

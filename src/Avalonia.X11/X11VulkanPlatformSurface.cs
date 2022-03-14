@@ -22,7 +22,7 @@ namespace Avalonia.X11
         
         public unsafe SurfaceKHR CreateSurface(VulkanInstance instance)
         {
-            if (instance.Api.TryGetInstanceExtension(instance.ApiHandle, out KhrXlibSurface surfaceExtension))
+            if (instance.Api.TryGetInstanceExtension(new Instance(instance.Handle), out KhrXlibSurface surfaceExtension))
             {
                 var createInfo = new XlibSurfaceCreateInfoKHR()
                 {
@@ -31,7 +31,7 @@ namespace Avalonia.X11
                     Window = _window.Handle.Handle
                 };
 
-                surfaceExtension.CreateXlibSurface(instance.ApiHandle, createInfo, null, out var surface).ThrowOnError();
+                surfaceExtension.CreateXlibSurface(new Instance(instance.Handle), createInfo, null, out var surface).ThrowOnError();
 
                 return surface;
             }

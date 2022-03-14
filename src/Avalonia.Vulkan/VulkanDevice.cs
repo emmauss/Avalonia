@@ -13,7 +13,7 @@ namespace Avalonia.Vulkan
 
         private VulkanDevice(Device apiHandle, VulkanPhysicalDevice physicalDevice, Vk api)
         {
-            ApiHandle = apiHandle;
+            InternalHandle = apiHandle;
             Api = api;
 
             api.GetDeviceQueue(apiHandle, physicalDevice.QueueFamilyIndex, 0, out var queue);
@@ -26,7 +26,9 @@ namespace Avalonia.Vulkan
             CommandBufferPool = new VulkanCommandBufferPool(this, physicalDevice);
         }
 
-        public Device ApiHandle { get; }
+        public IntPtr Handle => InternalHandle.Handle;
+
+        internal Device InternalHandle { get; }
         public Vk Api { get; }
 
         public VulkanQueue Queue { get; private set; }
@@ -47,7 +49,7 @@ namespace Avalonia.Vulkan
         {
             if(options.VulkanDeviceInitialization != null)
             {
-                return new VulkanDevice(options.VulkanDeviceInitialization.CreateDevice(instance.Api, instance.ApiHandle, physicalDevice, options), physicalDevice, instance.Api);
+                return new VulkanDevice(options.VulkanDeviceInitialization.CreateDevice(instance.Api, instance, physicalDevice, options), physicalDevice, instance.Api);
             }
             else
                 throw new Exception("VulkanDeviceInitialization is not found. Device can't be created.");
@@ -57,7 +59,7 @@ namespace Avalonia.Vulkan
         {
             lock (_lock)
             {
-                Api.QueueSubmit(Queue.ApiHandle, 1, submitInfo, fence);
+                Api.QueueSubmit(Queue.InternalHandle, 1, submitInfo, fence);
             }
         }
 
@@ -65,7 +67,7 @@ namespace Avalonia.Vulkan
         { 
             lock (_lock)
             {
-                Api.DeviceWaitIdle(ApiHandle);
+                Api.DeviceWaitIdle(InternalHandle);
             }
         }
 
@@ -73,7 +75,7 @@ namespace Avalonia.Vulkan
         {
             lock (_lock)
             {
-                Api.QueueWaitIdle(Queue.ApiHandle);
+                Api.QueueWaitIdle(Queue.InternalHandle);
             }
         }
 

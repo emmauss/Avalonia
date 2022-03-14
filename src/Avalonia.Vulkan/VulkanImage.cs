@@ -14,34 +14,41 @@ namespace Avalonia.Vulkan
         private readonly VulkanCommandBufferPool _commandBufferPool;
         private ImageLayout _currentLayout;
         private AccessFlags _currentAccessFlags;
-
-        public Image? ApiHandle { get; private set; }
-        public ImageView? ImageView { get; private set; }
+        private ImageUsageFlags _imageUsageFlags { get; }
+        private ImageView? _imageView { get; set; }
+        private DeviceMemory _imageMemory { get; set; }
+        
+        internal Image? InternalHandle { get; private set; }
+        internal Format Format { get; }
+        internal ImageAspectFlags AspectFlags { get; private set; }
+        
+        public ulong Handle => InternalHandle?.Handle ?? 0;
+        public ulong ViewHandle => _imageView?.Handle ?? 0;
+        public uint UsageFlags => (uint) _imageUsageFlags;
+        public ulong MemoryHandle => _imageMemory.Handle;
         public uint MipLevels { get; private set; }
         public PixelSize Size { get; }
-        public ImageUsageFlags ImageUsageFlags { get; }
-        public Format Format { get; }
-        public DeviceMemory ImageMemory { get; private set; }
         public ulong MemorySize { get; private set; }
-        public ImageAspectFlags AspectFlags { get; private set; }
-        public ImageLayout CurrentLayout => _currentLayout;
+        public uint CurrentLayout => (uint) _currentLayout;
 
-        public VulkanImage(VulkanDevice device, VulkanPhysicalDevice physicalDevice, VulkanCommandBufferPool commandBufferPool, Format format, PixelSize size, ImageUsageFlags imageUsageFlags, uint mipLevels = 0)
+        public VulkanImage(VulkanDevice device, VulkanPhysicalDevice physicalDevice, VulkanCommandBufferPool commandBufferPool, uint format, PixelSize size, uint mipLevels = 0)
         {
             _device = device;
             _physicalDevice = physicalDevice;
             _commandBufferPool = commandBufferPool;
-            Format = format;
+            Format = (Format) format;
             Size = size;
             MipLevels = mipLevels;
-            ImageUsageFlags = imageUsageFlags;
+            _imageUsageFlags =
+                ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
+                ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit;
 
             Initialize();
         }
 
         public unsafe void Initialize()
         {
-            if (!ApiHandle.HasValue)
+            if (!InternalHandle.HasValue)
             {
                 MipLevels = MipLevels != 0 ? MipLevels : (uint)Math.Floor(Math.Log(Math.Max(Size.Width, Size.Height), 2));
 
@@ -56,18 +63,18 @@ namespace Avalonia.Vulkan
                     MipLevels = MipLevels,
                     ArrayLayers = 1,
                     Samples = SampleCountFlags.SampleCount1Bit,
-                    Tiling = ImageTiling.Optimal,
-                    Usage = ImageUsageFlags,
+                    Tiling = Tiling,
+                    Usage = _imageUsageFlags,
                     SharingMode = SharingMode.Exclusive,
                     InitialLayout = ImageLayout.Undefined,
                     Flags = ImageCreateFlags.ImageCreateMutableFormatBit
                 };
 
                 _device.Api
-                    .CreateImage(_device.ApiHandle, imageCreateInfo, null, out var image).ThrowOnError();
-                ApiHandle = image;
+                    .CreateImage(_device.InternalHandle, imageCreateInfo, null, out var image).ThrowOnError();
+                InternalHandle = image;
 
-                _device.Api.GetImageMemoryRequirements(_device.ApiHandle, ApiHandle.Value,
+                _device.Api.GetImageMemoryRequirements(_device.InternalHandle, InternalHandle.Value,
                     out var memoryRequirements);
 
                 var memoryAllocateInfo = new MemoryAllocateInfo
@@ -79,12 +86,12 @@ namespace Avalonia.Vulkan
                         memoryRequirements.MemoryTypeBits, MemoryPropertyFlags.MemoryPropertyDeviceLocalBit)
                 };
 
-                _device.Api.AllocateMemory(_device.ApiHandle, memoryAllocateInfo, null,
+                _device.Api.AllocateMemory(_device.InternalHandle, memoryAllocateInfo, null,
                     out var imageMemory);
 
-                ImageMemory = imageMemory;
+                _imageMemory = imageMemory;
 
-                _device.Api.BindImageMemory(_device.ApiHandle, ApiHandle.Value, ImageMemory, 0);
+                _device.Api.BindImageMemory(_device.InternalHandle, InternalHandle.Value, _imageMemory, 0);
 
                 MemorySize = memoryRequirements.Size;
 
@@ -101,7 +108,7 @@ namespace Avalonia.Vulkan
                 var imageViewCreateInfo = new ImageViewCreateInfo
                 {
                     SType = StructureType.ImageViewCreateInfo,
-                    Image = ApiHandle.Value,
+                    Image = InternalHandle.Value,
                     ViewType = ImageViewType.ImageViewType2D,
                     Format = Format,
                     Components = componentMapping,
@@ -109,10 +116,10 @@ namespace Avalonia.Vulkan
                 };
 
                 _device.Api
-                    .CreateImageView(_device.ApiHandle, imageViewCreateInfo, null, out var imageView)
+                    .CreateImageView(_device.InternalHandle, imageViewCreateInfo, null, out var imageView)
                     .ThrowOnError();
 
-                ImageView = imageView;
+                _imageView = imageView;
 
                 _currentLayout = ImageLayout.Undefined;
 
@@ -120,13 +127,14 @@ namespace Avalonia.Vulkan
             }
         }
 
+        public ImageTiling Tiling => ImageTiling.Optimal;
 
-        public void TransitionLayout(ImageLayout destinationLayout, AccessFlags destinationAccessFlags)
+        internal void TransitionLayout(ImageLayout destinationLayout, AccessFlags destinationAccessFlags)
         {
-            var commandBuffer = _commandBufferPool.RentCommandBuffer();
+            var commandBuffer = _commandBufferPool.CreateCommandBuffer();
             commandBuffer.BeginRecording();
 
-            VulkanMemoryHelper.TransitionLayout(_device, commandBuffer.ApiHandle, ApiHandle.Value,
+            VulkanMemoryHelper.TransitionLayout(_device, commandBuffer.InternalHandle, InternalHandle.Value,
                 _currentLayout,
                 _currentAccessFlags,
                 destinationLayout, destinationAccessFlags,
@@ -140,15 +148,20 @@ namespace Avalonia.Vulkan
             _currentAccessFlags = destinationAccessFlags;
         }
 
+        public void TransitionLayout(uint destinationLayout, uint destinationAccessFlags)
+        {
+            TransitionLayout((ImageLayout)destinationLayout, (AccessFlags)destinationAccessFlags);
+        }
+
         public unsafe void Dispose()
         {
-            _device.Api.DestroyImageView(_device.ApiHandle, ImageView.Value, null);
-            _device.Api.DestroyImage(_device.ApiHandle, ApiHandle.Value, null);
-            _device.Api.FreeMemory(_device.ApiHandle, ImageMemory, null);
+            _device.Api.DestroyImageView(_device.InternalHandle, _imageView.Value, null);
+            _device.Api.DestroyImage(_device.InternalHandle, InternalHandle.Value, null);
+            _device.Api.FreeMemory(_device.InternalHandle, _imageMemory, null);
 
-            ImageView = default;
-            ApiHandle = default;
-            ImageMemory = default;
+            _imageView = default;
+            InternalHandle = default;
+            _imageMemory = default;
         }
     }
 }

@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Avalonia.Utilities;
 using Avalonia.Vulkan;
 using Avalonia.Vulkan.Imaging;
-using Silk.NET.Vulkan;
 using SkiaSharp;
 
 namespace Avalonia.Skia.Gpu.Vulkan
@@ -17,22 +16,26 @@ namespace Avalonia.Skia.Gpu.Vulkan
         private readonly VulkanPlatformInterface _platformInterface;
         private VulkanBitmapAttachment _surface;
         private object _lock = new object();
+        private readonly Vector _dpi;
+        private readonly PixelSize _pixelSize;
+        private readonly int _version;
 
-        public Vector Dpi { get; }
+        public Vector Dpi => _dpi;
 
-        public PixelSize PixelSize { get; }
-        public Format Format { get; }
+        public PixelSize PixelSize => _pixelSize;
 
-        public int Version {get; private set;}
+        public uint Format { get; }
+
+        public int Version => _version;
 
         public VulkanImage Image => _surface.Image;
 
-        public VulkanBitmapImpl(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, Format format)
+        internal VulkanBitmapImpl(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
         {
             _platformInterface = platformInterface;
-            PixelSize = pixelSize;
-            Dpi = dpi;
-            Format = Format.B8G8R8A8Unorm;
+            _pixelSize = pixelSize;
+            _dpi = dpi;
+            Format = format;
         }
 
         public IVulkanBitmapAttachment CreateFramebufferAttachment(VulkanPlatformInterface platformInterface, Action presentCallback)
@@ -73,16 +76,16 @@ namespace Avalonia.Skia.Gpu.Vulkan
                     {
                         CurrentQueueFamily = _platformInterface.PhysicalDevice.QueueFamilyIndex,
                         Format = (uint)Format,
-                        Image = _surface.Image.ApiHandle.Value.Handle,
+                        Image = _surface.Image.Handle,
                         ImageLayout = (uint)_surface.Image.CurrentLayout,
-                        ImageTiling = (uint)ImageTiling.Optimal,
-                        ImageUsageFlags = (uint)_surface.Image.ImageUsageFlags,
+                        ImageTiling = (uint)_surface.Image.Tiling,
+                        ImageUsageFlags = (uint)_surface.Image.UsageFlags,
                         LevelCount = _surface.Image.MipLevels,
                         SampleCount = 1,
                         Protected = false,
                         Alloc = new GRVkAlloc()
                         {
-                            Memory = _surface.Image.ImageMemory.Handle,
+                            Memory = _surface.Image.MemoryHandle,
                             Flags = 0,
                             Offset = 0,
                             Size = _surface.Image.MemorySize
@@ -135,9 +138,7 @@ namespace Avalonia.Skia.Gpu.Vulkan
             _platformInterface = platformInterface;
             _presentCallback = presentCallback;
 
-            Image = new VulkanImage(platformInterface.Device, platformInterface.PhysicalDevice, platformInterface.Device.CommandBufferPool, bitmap.Format, bitmap.PixelSize,
-                ImageUsageFlags.ImageUsageColorAttachmentBit | ImageUsageFlags.ImageUsageTransferDstBit |
-                              ImageUsageFlags.ImageUsageTransferSrcBit | ImageUsageFlags.ImageUsageSampledBit, 1);
+            Image = new VulkanImage(platformInterface.Device, platformInterface.PhysicalDevice, platformInterface.Device.CommandBufferPool, bitmap.Format, bitmap.PixelSize, 1);
 
             _referenceCount = 1;
         }
@@ -158,8 +159,8 @@ namespace Avalonia.Skia.Gpu.Vulkan
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(VulkanBitmapAttachment));
-
-            Image.TransitionLayout(ImageLayout.TransferSrcOptimal, AccessFlags.AccessNoneKhr);
+            // ImageLayout.TransferSrcOptimal = 6
+            Image.TransitionLayout(6, 0);
             _referenceCount++;
             _bitmap.Present(this);
             _presentCallback();

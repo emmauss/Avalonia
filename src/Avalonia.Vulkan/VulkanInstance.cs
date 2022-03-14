@@ -15,11 +15,13 @@ namespace Avalonia.Vulkan
 
         private VulkanInstance(Instance apiHandle, Vk api)
         {
-            ApiHandle = apiHandle;
+            InternalHandle = apiHandle;
             Api = api;
         }
 
-        public Instance ApiHandle { get; }
+        public IntPtr Handle => InternalHandle.Handle;
+
+        internal Instance InternalHandle { get; }
         public Vk Api { get; }
 
         internal static IList<string> RequiredInstanceExtensions
@@ -44,7 +46,7 @@ namespace Avalonia.Vulkan
 
         public unsafe void Dispose()
         {
-            Api.DestroyInstance(ApiHandle, null);
+            Api.DestroyInstance(InternalHandle, null);
             Api?.Dispose();
         }
 
@@ -74,8 +76,6 @@ namespace Avalonia.Vulkan
                 enabledExtensions.Add(ExtDebugUtils.ExtensionName);
                 if (IsLayerAvailable(api, "VK_LAYER_KHRONOS_validation"))
                     enabledLayers.Add("VK_LAYER_KHRONOS_validation");
-                if (IsLayerAvailable(api, "VK_LAYER_RENDERDOC_Capture"))
-                    enabledLayers.Add("VK_LAYER_RENDERDOC_Capture");
             }
 
             var ppEnabledExtensions = stackalloc IntPtr[enabledExtensions.Count];

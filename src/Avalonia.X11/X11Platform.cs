@@ -97,15 +97,14 @@ namespace Avalonia.X11
 
             if (options.UseGpu)
             {
-                if (options.UseEGL)
-                    EglPlatformOpenGlInterface.TryInitialize();
-                else if (options.UseVulkan)
-                    VulkanPlatformInterface.TryInitialize();
-                else
-                    GlxPlatformOpenGlInterface.TryInitialize(Info, Options.GlProfiles);
+                if (!options.UseVulkan || !VulkanPlatformInterface.TryInitialize())
+                {
+                    if (options.UseEGL)
+                        EglPlatformOpenGlInterface.TryInitialize();
+                    else
+                        GlxPlatformOpenGlInterface.TryInitialize(Info, Options.GlProfiles);
+                }
             }
-
-            
         }
 
         public IntPtr DeferredDisplay { get; set; }

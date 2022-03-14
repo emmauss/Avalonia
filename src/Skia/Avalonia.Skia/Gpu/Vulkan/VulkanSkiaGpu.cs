@@ -43,13 +43,13 @@ namespace Avalonia.Skia
                     if (addr != IntPtr.Zero)
                         return addr;
 
-                    addr = _vulkan.Device.Api.GetDeviceProcAddr(_vulkan.Device.ApiHandle, name);
+                    addr = _vulkan.Device.Api.GetDeviceProcAddr(new Device(_vulkan.Device.Handle), name);
 
                     if (addr != IntPtr.Zero)
                         return addr;
                 }
 
-                addr = _vulkan.Device.Api.GetInstanceProcAddr(_vulkan.Instance.ApiHandle, name);
+                addr = _vulkan.Device.Api.GetInstanceProcAddr(new Instance(_vulkan.Instance.Handle), name);
 
 
                 if (addr == IntPtr.Zero)
@@ -60,10 +60,10 @@ namespace Avalonia.Skia
             
             _grVkBackend = new GRVkBackendContext()
             {
-                VkInstance = _vulkan.Device.ApiHandle.Handle,
-                VkPhysicalDevice = _vulkan.PhysicalDevice.ApiHandle.Handle,
-                VkDevice = _vulkan.Device.ApiHandle.Handle,
-                VkQueue = _vulkan.Device.Queue.ApiHandle.Handle,
+                VkInstance = _vulkan.Device.Handle,
+                VkPhysicalDevice = _vulkan.PhysicalDevice.Handle,
+                VkDevice = _vulkan.Device.Handle,
+                VkQueue = _vulkan.Device.Queue.Handle,
                 GraphicsQueueIndex = _vulkan.PhysicalDevice.QueueFamilyIndex,
                 GetProcedureAddress = getProc
             };
@@ -98,7 +98,7 @@ namespace Avalonia.Skia
             return null;
         }
 
-        public IVulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, Format format)
+        internal IVulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
         {
             return new VulkanBitmapImpl(platformInterface, pixelSize, dpi, format);
         }

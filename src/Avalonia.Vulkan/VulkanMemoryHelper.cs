@@ -7,7 +7,7 @@ namespace Avalonia.Vulkan
         internal static int FindSuitableMemoryTypeIndex(VulkanPhysicalDevice physicalDevice, uint memoryTypeBits,
             MemoryPropertyFlags flags)
         {
-            physicalDevice.Api.GetPhysicalDeviceMemoryProperties(physicalDevice.ApiHandle, out var properties);
+            physicalDevice.Api.GetPhysicalDeviceMemoryProperties(physicalDevice.InternalHandle, out var properties);
 
             for (var i = 0; i < properties.MemoryTypeCount; i++)
             {

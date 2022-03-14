@@ -2,43 +2,50 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Silk.NET.Core;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 
 namespace Avalonia.Vulkan
 {
-    public class VulkanPhysicalDevice
+    public unsafe class VulkanPhysicalDevice
     {
-        private PhysicalDeviceProperties _properties;
-
         private VulkanPhysicalDevice(PhysicalDevice apiHandle, Vk api, uint queueCount, uint queueFamilyIndex)
         {
-            ApiHandle = apiHandle;
+            InternalHandle = apiHandle;
             Api = api;
             QueueCount = queueCount;
             QueueFamilyIndex = queueFamilyIndex;
             
-            api.GetPhysicalDeviceProperties(apiHandle, out _properties);
+            api.GetPhysicalDeviceProperties(apiHandle, out var properties);
+            
+            DeviceName = Marshal.PtrToStringAnsi((IntPtr)properties.DeviceName);
+            
+            var version = (Version32)properties.ApiVersion;
+            ApiVersion = new Version((int) version.Major, (int) version.Minor, 0, (int) version.Patch);
         }
 
-        public PhysicalDevice ApiHandle { get; }
+        internal PhysicalDevice InternalHandle { get; }
         internal Vk Api { get; }
         public uint QueueCount { get; }
         public uint QueueFamilyIndex { get; }
-        public PhysicalDeviceProperties Properties => _properties;
+        public IntPtr Handle => InternalHandle.Handle;
+
+        public string DeviceName { get; }
+        public Version ApiVersion { get; }
 
         internal static unsafe VulkanPhysicalDevice FindSuitablePhysicalDevice(VulkanInstance instance,
             VulkanSurface surface, bool preferDiscreteGpu, uint? preferredDevice)
         {
             uint physicalDeviceCount;
 
-            instance.Api.EnumeratePhysicalDevices(instance.ApiHandle, &physicalDeviceCount, null).ThrowOnError();
+            instance.Api.EnumeratePhysicalDevices(instance.InternalHandle, &physicalDeviceCount, null).ThrowOnError();
 
             var physicalDevices = new PhysicalDevice[physicalDeviceCount];
 
             fixed (PhysicalDevice* pPhysicalDevices = physicalDevices)
             {
-                instance.Api.EnumeratePhysicalDevices(instance.ApiHandle, &physicalDeviceCount, pPhysicalDevices)
+                instance.Api.EnumeratePhysicalDevices(instance.InternalHandle, &physicalDeviceCount, pPhysicalDevices)
                     .ThrowOnError();
             }
 
@@ -123,13 +130,13 @@ namespace Avalonia.Vulkan
         {
             uint propertiesCount;
 
-            Api.EnumerateDeviceExtensionProperties(ApiHandle, (byte*)null, &propertiesCount, null).ThrowOnError();
+            Api.EnumerateDeviceExtensionProperties(InternalHandle, (byte*)null, &propertiesCount, null).ThrowOnError();
 
             var extensionProperties = new ExtensionProperties[propertiesCount];
 
             fixed (ExtensionProperties* pExtensionProperties = extensionProperties)
             {
-                Api.EnumerateDeviceExtensionProperties(ApiHandle, (byte*)null, &propertiesCount, pExtensionProperties)
+                Api.EnumerateDeviceExtensionProperties(InternalHandle, (byte*)null, &propertiesCount, pExtensionProperties)
                     .ThrowOnError();
             }
 

@@ -176,11 +176,7 @@ namespace Avalonia.Win32
                 .Bind<IMountedVolumeInfoProvider>().ToConstant(new WindowsMountedVolumeInfoProvider())
                 .Bind<IPlatformLifetimeEventsImpl>().ToConstant(s_instance);
 
-            if (options.UseVulkan)
-            {
-                VulkanPlatformInterface.TryInitialize();
-            }
-            else
+            if (!options.UseVulkan || !VulkanPlatformInterface.TryInitialize())
             {
                 Win32GlManager.Initialize();
             }

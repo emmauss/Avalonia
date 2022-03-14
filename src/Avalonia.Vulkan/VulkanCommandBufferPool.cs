@@ -22,14 +22,14 @@ namespace Avalonia.Vulkan
                 QueueFamilyIndex = physicalDevice.QueueFamilyIndex
             };
 
-            device.Api.CreateCommandPool(_device.ApiHandle, commandPoolCreateInfo, null, out _commandPool)
+            device.Api.CreateCommandPool(_device.InternalHandle, commandPoolCreateInfo, null, out _commandPool)
                 .ThrowOnError();
         }
 
         public unsafe void Dispose()
         {
             FreeUsedCommandBuffers();
-            _device.Api.DestroyCommandPool(_device.ApiHandle, _commandPool, null);
+            _device.Api.DestroyCommandPool(_device.InternalHandle, _commandPool, null);
         }
 
         private CommandBuffer AllocateCommandBuffer()
@@ -42,12 +42,12 @@ namespace Avalonia.Vulkan
                 Level = CommandBufferLevel.Primary
             };
 
-            _device.Api.AllocateCommandBuffers(_device.ApiHandle, commandBufferAllocateInfo, out var commandBuffer);
+            _device.Api.AllocateCommandBuffers(_device.InternalHandle, commandBufferAllocateInfo, out var commandBuffer);
 
             return commandBuffer;
         }
 
-        public VulkanCommandBuffer RentCommandBuffer()
+        public VulkanCommandBuffer CreateCommandBuffer()
         {
             return new(_device, this);
         }
@@ -75,15 +75,19 @@ namespace Avalonia.Vulkan
             private readonly VulkanCommandBufferPool _commandBufferPool;
             private readonly VulkanDevice _device;
             private readonly Fence _fence;
-            public bool _isEnded;
-            public bool _isStarted;
+            private bool _hasEnded;
+            private bool _hasStarted;
+
+            public IntPtr Handle => InternalHandle.Handle;
+
+            internal CommandBuffer InternalHandle { get; }
 
             internal unsafe VulkanCommandBuffer(VulkanDevice device, VulkanCommandBufferPool commandBufferPool)
             {
                 _device = device;
                 _commandBufferPool = commandBufferPool;
 
-                ApiHandle = _commandBufferPool.AllocateCommandBuffer();
+                InternalHandle = _commandBufferPool.AllocateCommandBuffer();
 
                 var fenceCreateInfo = new FenceCreateInfo()
                 {
@@ -91,23 +95,21 @@ namespace Avalonia.Vulkan
                     Flags = FenceCreateFlags.FenceCreateSignaledBit
                 };
 
-                device.Api.CreateFence(device.ApiHandle, fenceCreateInfo, null, out _fence);
+                device.Api.CreateFence(device.InternalHandle, fenceCreateInfo, null, out _fence);
             }
-
-            public CommandBuffer ApiHandle { get; }
 
             public unsafe void Dispose()
             {
-                _device.Api.WaitForFences(_device.ApiHandle, 1, _fence, true, ulong.MaxValue);
-                _device.Api.FreeCommandBuffers(_device.ApiHandle, _commandBufferPool._commandPool, 1, ApiHandle);
-                _device.Api.DestroyFence(_device.ApiHandle, _fence, null);
+                _device.Api.WaitForFences(_device.InternalHandle, 1, _fence, true, ulong.MaxValue);
+                _device.Api.FreeCommandBuffers(_device.InternalHandle, _commandBufferPool._commandPool, 1, InternalHandle);
+                _device.Api.DestroyFence(_device.InternalHandle, _fence, null);
             }
 
             public void BeginRecording()
             {
-                if (!_isStarted)
+                if (!_hasStarted)
                 {
-                    _isStarted = true;
+                    _hasStarted = true;
 
                     var beginInfo = new CommandBufferBeginInfo
                     {
@@ -115,17 +117,17 @@ namespace Avalonia.Vulkan
                         Flags = CommandBufferUsageFlags.CommandBufferUsageOneTimeSubmitBit
                     };
 
-                    _device.Api.BeginCommandBuffer(ApiHandle, beginInfo);
+                    _device.Api.BeginCommandBuffer(InternalHandle, beginInfo);
                 }
             }
 
             public void EndRecording()
             {
-                if (_isStarted && !_isEnded)
+                if (_hasStarted && !_hasEnded)
                 {
-                    _isEnded = true;
+                    _hasEnded = true;
 
-                    _device.Api.EndCommandBuffer(ApiHandle);
+                    _device.Api.EndCommandBuffer(InternalHandle);
                 }
             }
 
@@ -149,7 +151,7 @@ namespace Avalonia.Vulkan
                 {
                     fixed (PipelineStageFlags* pWaitDstStageMask = waitDstStageMask)
                     {
-                        var commandBuffer = ApiHandle;
+                        var commandBuffer = InternalHandle;
                         var submitInfo = new SubmitInfo
                         {
                             SType = StructureType.SubmitInfo,
@@ -162,7 +164,7 @@ namespace Avalonia.Vulkan
                             PSignalSemaphores = pSignalSemaphores,
                         };
 
-                        _device.Api.ResetFences(_device.ApiHandle, 1, fence.Value);
+                        _device.Api.ResetFences(_device.InternalHandle, 1, fence.Value);
 
                         _device.Submit(submitInfo, fence.Value);
                     }

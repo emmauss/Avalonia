@@ -25,14 +25,14 @@ namespace Avalonia.Vulkan
 
         public unsafe void Dispose()
         {
-            SurfaceExtension.DestroySurface(_instance.ApiHandle, ApiHandle, null);
+            SurfaceExtension.DestroySurface(_instance.InternalHandle, ApiHandle, null);
         }
 
         internal static VulkanSurface CreateSurface(VulkanInstance instance, IVulkanPlatformSurface vulkanPlatformSurface)
         {
             if (SurfaceExtension == null)
             {
-                instance.Api.TryGetInstanceExtension(instance.ApiHandle, out KhrSurface extension);
+                instance.Api.TryGetInstanceExtension(instance.InternalHandle, out KhrSurface extension);
 
                 SurfaceExtension = extension;
             }
@@ -42,7 +42,7 @@ namespace Avalonia.Vulkan
 
         internal bool CanSurfacePresent(VulkanPhysicalDevice physicalDevice)
         {
-            SurfaceExtension.GetPhysicalDeviceSurfaceSupport(physicalDevice.ApiHandle, physicalDevice.QueueFamilyIndex, ApiHandle, out var isSupported);
+            SurfaceExtension.GetPhysicalDeviceSurfaceSupport(physicalDevice.InternalHandle, physicalDevice.QueueFamilyIndex, ApiHandle, out var isSupported);
 
             return isSupported;
         }
@@ -51,14 +51,14 @@ namespace Avalonia.Vulkan
         {
             uint surfaceFormatsCount;
 
-            SurfaceExtension.GetPhysicalDeviceSurfaceFormats(physicalDevice.ApiHandle, ApiHandle,
+            SurfaceExtension.GetPhysicalDeviceSurfaceFormats(physicalDevice.InternalHandle, ApiHandle,
                 &surfaceFormatsCount, null);
 
             var surfaceFormats = new SurfaceFormatKHR[surfaceFormatsCount];
 
             fixed (SurfaceFormatKHR* pSurfaceFormats = surfaceFormats)
             {
-                SurfaceExtension.GetPhysicalDeviceSurfaceFormats(physicalDevice.ApiHandle, ApiHandle,
+                SurfaceExtension.GetPhysicalDeviceSurfaceFormats(physicalDevice.InternalHandle, ApiHandle,
                     &surfaceFormatsCount, pSurfaceFormats);
             }
 

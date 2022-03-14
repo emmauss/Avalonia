@@ -1,11 +1,9 @@
 using System;
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.Vulkan.Imaging;
-using Avalonia.Vulkan.Surfaces;
 using Silk.NET.Vulkan;
 
 namespace Avalonia.Vulkan.Controls

@@ -19,11 +19,11 @@ namespace Avalonia.Win32.Vulkan
         
         public unsafe SurfaceKHR CreateSurface(VulkanInstance instance)
         {
-            if (instance.Api.TryGetInstanceExtension(instance.ApiHandle, out KhrWin32Surface surfaceExtension))
+            if (instance.Api.TryGetInstanceExtension(new Instance(instance.Handle), out KhrWin32Surface surfaceExtension))
             {
                 var createInfo = new Win32SurfaceCreateInfoKHR() { Hinstance = 0, Hwnd = _window.Handle.Handle, SType = StructureType.Win32SurfaceCreateInfoKhr };
 
-                surfaceExtension.CreateWin32Surface(instance.ApiHandle, createInfo, null, out var surface).ThrowOnError();
+                surfaceExtension.CreateWin32Surface(new Instance(instance.Handle), createInfo, null, out var surface).ThrowOnError();
 
                 return surface;
             }

@@ -10,6 +10,6 @@ namespace Avalonia.Vulkan
 {
     public interface IVulkanAwarePlatformRenderInterface
     {
-        IVulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, Format format);
+        IVulkanBitmapImpl CreateVulkanBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format);
     }
 }

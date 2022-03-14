@@ -11,7 +11,7 @@ namespace Avalonia.Vulkan
     internal class DefaultVulkanDeviceInitialization : IVulkanDeviceInitialization
     {
         /// <inheritdoc/>
-        public unsafe Device CreateDevice(Vk api, Instance instance, VulkanPhysicalDevice physicalDevice, VulkanOptions options)
+        public unsafe Device CreateDevice(Vk api, VulkanInstance instance, VulkanPhysicalDevice physicalDevice, VulkanOptions options)
         {
             var queuePriorities = stackalloc float[(int)physicalDevice.QueueCount];
 
@@ -46,7 +46,7 @@ namespace Avalonia.Vulkan
                 PEnabledFeatures = &features
             };
 
-            api.CreateDevice(physicalDevice.ApiHandle, in deviceCreateInfo, null, out var device)
+            api.CreateDevice(physicalDevice.InternalHandle, in deviceCreateInfo, null, out var device)
                 .ThrowOnError();
 
             for (var i = 0; i < enabledExtensions.Length; i++)

@@ -1,3 +1,4 @@
+using System;
 using Silk.NET.Vulkan;
 
 namespace Avalonia.Vulkan
@@ -7,10 +8,11 @@ namespace Avalonia.Vulkan
         public VulkanQueue(VulkanDevice device, Queue apiHandle)
         {
             Device = device;
-            ApiHandle = apiHandle;
+            InternalHandle = apiHandle;
         }
 
         public VulkanDevice Device { get; }
-        public Queue ApiHandle { get; }
+        public IntPtr Handle => InternalHandle.Handle;
+        internal Queue InternalHandle { get; }
     }
 }

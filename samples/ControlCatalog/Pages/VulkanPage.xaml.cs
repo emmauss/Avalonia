@@ -122,8 +122,8 @@ namespace ControlCatalog.Pages
         protected unsafe override void OnVulkanRender(VulkanPlatformInterface platformInterface, VulkanImageInfo info)
         {
             var api = platformInterface.Instance.Api;
-            var device = platformInterface.Device.ApiHandle;
-            var physicalDevice = platformInterface.PhysicalDevice.ApiHandle;
+            var device = new Device(platformInterface.Device.Handle);
+            var physicalDevice = new PhysicalDevice(platformInterface.PhysicalDevice.Handle);
 
             if (info.PixelSixe != _previousImageSize)
                 CreateTemporalObjects(api, device, info, physicalDevice);
@@ -153,10 +153,11 @@ namespace ControlCatalog.Pages
                 MaxY = _maxY,
             };
 
-            var commandBuffer = platformInterface.Device.CommandBufferPool.RentCommandBuffer();
+            var commandBuffer = platformInterface.Device.CommandBufferPool.CreateCommandBuffer();
             commandBuffer.BeginRecording();
+            var commandBufferHandle = new CommandBuffer(commandBuffer.Handle);
 
-            api.CmdSetViewport(commandBuffer.ApiHandle, 0, 1,
+            api.CmdSetViewport(commandBufferHandle, 0, 1,
                 new Viewport()
                 {
                     Width = (float)Bounds.Width,
@@ -172,7 +173,7 @@ namespace ControlCatalog.Pages
                 Extent = new Extent2D((uint?)Bounds.Width, (uint?)Bounds.Height)
             };
 
-            api.CmdSetScissor(commandBuffer.ApiHandle, 0, 1, &scissor);
+            api.CmdSetScissor(commandBufferHandle, 0, 1, &scissor);
 
             var clearColor = new ClearValue(new ClearColorValue(0, 0, 0, 0), new ClearDepthStencilValue(1, 0));
 
@@ -191,20 +192,20 @@ namespace ControlCatalog.Pages
                     PClearValues = clearValue
                 };
 
-                api.CmdBeginRenderPass(commandBuffer.ApiHandle, beginInfo, SubpassContents.Inline);
+                api.CmdBeginRenderPass(commandBufferHandle, beginInfo, SubpassContents.Inline);
             }
 
-            api.CmdBindPipeline(commandBuffer.ApiHandle, PipelineBindPoint.Graphics, _pipeline);
+            api.CmdBindPipeline(commandBufferHandle, PipelineBindPoint.Graphics, _pipeline);
 
-            api.CmdPushConstants(commandBuffer.ApiHandle, _pipelineLayout, ShaderStageFlags.ShaderStageVertexBit, 0, (uint)Marshal.SizeOf<VertextPushConstant>(), &vertexConstant);
-            api.CmdPushConstants(commandBuffer.ApiHandle, _pipelineLayout, ShaderStageFlags.ShaderStageFragmentBit, (uint)Marshal.SizeOf<VertextPushConstant>(), (uint)Marshal.SizeOf<FragmentPushConstant>(), &fragConstant);
+            api.CmdPushConstants(commandBufferHandle, _pipelineLayout, ShaderStageFlags.ShaderStageVertexBit, 0, (uint)Marshal.SizeOf<VertextPushConstant>(), &vertexConstant);
+            api.CmdPushConstants(commandBufferHandle, _pipelineLayout, ShaderStageFlags.ShaderStageFragmentBit, (uint)Marshal.SizeOf<VertextPushConstant>(), (uint)Marshal.SizeOf<FragmentPushConstant>(), &fragConstant);
 
-            api.CmdBindVertexBuffers(commandBuffer.ApiHandle, 0, 1, _vertexBuffer, 0);
-            api.CmdBindIndexBuffer(commandBuffer.ApiHandle, _indexBuffer, 0, IndexType.Uint16);
+            api.CmdBindVertexBuffers(commandBufferHandle, 0, 1, _vertexBuffer, 0);
+            api.CmdBindIndexBuffer(commandBufferHandle, _indexBuffer, 0, IndexType.Uint16);
 
-            api.CmdDrawIndexed(commandBuffer.ApiHandle, (uint) _indices.Length, 1, 0, 0, 0);
+            api.CmdDrawIndexed(commandBufferHandle, (uint) _indices.Length, 1, 0, 0, 0);
 
-            api.CmdEndRenderPass(commandBuffer.ApiHandle);
+            api.CmdEndRenderPass(commandBufferHandle);
 
             api.ResetFences(device, 1, _fence);
             commandBuffer.Submit(null, null, null, _fence);
@@ -222,7 +223,7 @@ namespace ControlCatalog.Pages
             if (_isInit)
             {
                 var api = platformInterface.Instance.Api;
-                var device = platformInterface.Device.ApiHandle;
+                var device = new Device(platformInterface.Device.Handle);
                 
                 DestroyTemporalObjects(api, device);
 
@@ -343,8 +344,8 @@ namespace ControlCatalog.Pages
                 Samples = SampleCountFlags.SampleCount1Bit,
                 LoadOp = AttachmentLoadOp.Clear,
                 StoreOp = AttachmentStoreOp.Store,
-                InitialLayout = info.Image.CurrentLayout,
-                FinalLayout = info.Image.CurrentLayout,
+                InitialLayout = (ImageLayout) info.Image.CurrentLayout,
+                FinalLayout = (ImageLayout) info.Image.CurrentLayout,
                 StencilLoadOp = AttachmentLoadOp.DontCare,
                 StencilStoreOp = AttachmentStoreOp.DontCare
             };
@@ -408,7 +409,7 @@ namespace ControlCatalog.Pages
                 
             
                 // create framebuffer
-                var frameBufferAttachments = new[] { info.Image.ImageView.Value, _depthImageView };
+                var frameBufferAttachments = new[] { new ImageView(info.Image.ViewHandle), _depthImageView };
 
                 fixed (ImageView* frAtPtr = frameBufferAttachments)
                 {
@@ -625,13 +626,15 @@ namespace ControlCatalog.Pages
             api.CreateBuffer(device, bufferInfo, null, out _vertexBuffer).ThrowOnError();
 
             api.GetBufferMemoryRequirements(device, _vertexBuffer, out var memoryRequirements);
+            
+            var physicalDevice = new PhysicalDevice(platformInterface.PhysicalDevice.Handle);
 
             var memoryAllocateInfo = new MemoryAllocateInfo
             {
                 SType = StructureType.MemoryAllocateInfo,
                 AllocationSize = memoryRequirements.Size,
                 MemoryTypeIndex = (uint)FindSuitableMemoryTypeIndex(api,
-                    platformInterface.PhysicalDevice.ApiHandle,
+                    physicalDevice,
                     memoryRequirements.MemoryTypeBits,
                     MemoryPropertyFlags.MemoryPropertyHostCoherentBit |
                     MemoryPropertyFlags.MemoryPropertyHostVisibleBit)
@@ -668,7 +671,7 @@ namespace ControlCatalog.Pages
                 SType = StructureType.MemoryAllocateInfo,
                 AllocationSize = memoryRequirements.Size,
                 MemoryTypeIndex = (uint)FindSuitableMemoryTypeIndex(api,
-                    platformInterface.PhysicalDevice.ApiHandle,
+                    physicalDevice,
                     memoryRequirements.MemoryTypeBits,
                     MemoryPropertyFlags.MemoryPropertyHostCoherentBit |
                     MemoryPropertyFlags.MemoryPropertyHostVisibleBit)
@@ -707,14 +710,12 @@ namespace ControlCatalog.Pages
             base.OnVulkanInit(platformInterface, info);
 
             var api = platformInterface.Instance.Api;
-            var device = platformInterface.Device.ApiHandle;
+            var device = new Device(platformInterface.Device.Handle);
 
-            var props = platformInterface.PhysicalDevice.Properties;
+            var deviceName = platformInterface.PhysicalDevice.DeviceName;
+            var version = platformInterface.PhysicalDevice.ApiVersion;
 
-            var deviceName = Marshal.PtrToStringAnsi((IntPtr)props.DeviceName);
-            var version = (Version32)props.ApiVersion;
-
-            Info = $"Renderer: {deviceName} Version: {version.Major}.{version.Minor}.{version.Patch}";
+            Info = $"Renderer: {deviceName} Version: {version.Major}.{version.Minor}.{version.Revision}";
 
             var vertShaderData = GetShader(false);
             var fragShaderData = GetShader(true);
@@ -745,7 +746,7 @@ namespace ControlCatalog.Pages
 
             CreateBuffers(api, device, platformInterface);
 
-            CreateTemporalObjects(api, device, info, platformInterface.PhysicalDevice.ApiHandle);
+            CreateTemporalObjects(api, device, info, new PhysicalDevice(platformInterface.PhysicalDevice.Handle));
 
             var fenceCreateInfo = new FenceCreateInfo()
             {

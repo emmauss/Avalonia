@@ -42,7 +42,7 @@ namespace Avalonia.Vulkan
         {
             _commandBuffer = Display.StartPresentation(_renderTarget);
 
-            Display.BlitImageToCurrentImage(_renderTarget, _commandBuffer.ApiHandle);
+            Display.BlitImageToCurrentImage(_renderTarget, _commandBuffer.InternalHandle);
 
             Display.EndPresentation(_commandBuffer);
         }

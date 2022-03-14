@@ -30,23 +30,35 @@ namespace Avalonia.Vulkan
 
         private static VulkanPlatformInterface TryCreate()
         {
-            _options = AvaloniaLocator.Current.GetService<VulkanOptions>() ?? new VulkanOptions();
+            try
+            {
+                _options = AvaloniaLocator.Current.GetService<VulkanOptions>() ?? new VulkanOptions();
 
 #if NET6_0_OR_GREATER
             if (OperatingSystem.IsAndroid())
                 Silk.NET.Core.Loader.SearchPathContainer.Platform = Silk.NET.Core.Loader.UnderlyingPlatform.Android;
 #endif
 
-            var instance = VulkanInstance.Create(_options);
+                var instance = VulkanInstance.Create(_options);
 
-            return new VulkanPlatformInterface(instance);
+                return new VulkanPlatformInterface(instance);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
-        public static void TryInitialize()
+        public static bool TryInitialize()
         {
             var feature = TryCreate();
             if (feature != null)
+            {
                 AvaloniaLocator.CurrentMutable.Bind<VulkanPlatformInterface>().ToConstant(feature);
+                return true;
+            }
+
+            return false;
         }
 
         public VulkanSurfaceRenderTarget CreateRenderTarget(IVulkanPlatformSurface platformSurface)
