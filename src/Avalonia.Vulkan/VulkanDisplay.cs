@@ -127,10 +127,11 @@ namespace Avalonia.Vulkan
             }
 
             PresentModeKHR presentMode;
+            var modes = presentModes.ToList();
 
-            if (presentModes.ToList().Contains(PresentModeKHR.PresentModeMailboxKhr))
+            if (modes.Contains(PresentModeKHR.PresentModeMailboxKhr))
                 presentMode = PresentModeKHR.PresentModeMailboxKhr;
-            else if (presentModes.ToList().Contains(PresentModeKHR.PresentModeFifoKhr))
+            else if (modes.Contains(PresentModeKHR.PresentModeFifoKhr))
                 presentMode = PresentModeKHR.PresentModeFifoKhr;
             else
                 presentMode = PresentModeKHR.PresentModeImmediateKhr;

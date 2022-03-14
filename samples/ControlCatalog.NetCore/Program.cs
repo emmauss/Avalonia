@@ -125,8 +125,7 @@ namespace ControlCatalog.NetCore
                 .With(new VulkanOptions()
                 {
                     UseDebug = true,
-                    PreferDiscreteGpu = true,
-                    PreferredDevice = 8085
+                    PreferDiscreteGpu = true
                 })
                 .UseSkia()
                 .UseManagedSystemDialogs()

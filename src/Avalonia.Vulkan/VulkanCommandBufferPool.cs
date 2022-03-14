@@ -137,9 +137,9 @@ namespace Avalonia.Vulkan
             }
 
             public unsafe void Submit(
-                Semaphore[] waitSemaphores,
-                PipelineStageFlags[] waitDstStageMask,
-                Semaphore[] signalSemaphores,
+                ReadOnlySpan<Semaphore> waitSemaphores,
+                ReadOnlySpan<PipelineStageFlags> waitDstStageMask,
+                ReadOnlySpan<Semaphore> signalSemaphores,
                 Fence? fence = null)
             {
                 EndRecording();

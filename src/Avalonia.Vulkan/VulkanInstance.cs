@@ -11,10 +11,12 @@ namespace Avalonia.Vulkan
 {
     public class VulkanInstance : IDisposable
     {
+        private readonly DebugUtilsMessengerEXT _messenger;
         private const string EngineName = "Avalonia Vulkan";
 
-        private VulkanInstance(Instance apiHandle, Vk api)
+        private VulkanInstance(Instance apiHandle, Vk api, DebugUtilsMessengerEXT messenger)
         {
+            _messenger = messenger;
             InternalHandle = apiHandle;
             Api = api;
         }
@@ -46,6 +48,13 @@ namespace Avalonia.Vulkan
 
         public unsafe void Dispose()
         {
+            if (_messenger.Handle != 0)
+            {
+                if (Api.TryGetInstanceExtension(InternalHandle, out ExtDebugUtils debugUtils))
+                {
+                    debugUtils.DestroyDebugUtilsMessenger(InternalHandle, _messenger, null);
+                }
+            }
             Api.DestroyInstance(InternalHandle, null);
             Api?.Dispose();
         }
@@ -106,6 +115,8 @@ namespace Avalonia.Vulkan
 
             for (var i = 0; i < enabledLayers.Count; i++) Marshal.FreeHGlobal(ppEnabledLayers[i]);
 
+            DebugUtilsMessengerEXT messenger = default;
+
             if (options.UseDebug && api.TryGetInstanceExtension(instance, out ExtDebugUtils debugUtils))
             {
                 var createInfo = new DebugUtilsMessengerCreateInfoEXT
@@ -116,19 +127,29 @@ namespace Avalonia.Vulkan
                     PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(LogCallback),
                 };
 
-                debugUtils.CreateDebugUtilsMessenger(instance, createInfo, null, out var messenger);
+                debugUtils.CreateDebugUtilsMessenger(instance, createInfo, null, out messenger);
             }
 
-            return new VulkanInstance(instance, api);
+            return new VulkanInstance(instance, api, messenger);
         }
 
         private static unsafe uint LogCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
         {
-            if (messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityWarningBitExt)
+            var message = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
+            switch (messageSeverity)
             {
-                var message = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
-
-                Logger.TryGet(LogEventLevel.Warning, "Vulkan")?.Log(null, message);
+                case DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityWarningBitExt:
+                    Logger.TryGet(LogEventLevel.Warning, "Vulkan")?.Log(null, message);
+                    break;
+                case DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityInfoBitExt:
+                    Logger.TryGet(LogEventLevel.Information, "Vulkan")?.Log(null, message);
+                    break;
+                case DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityErrorBitExt:
+                    Logger.TryGet(LogEventLevel.Error, "Vulkan")?.Log(null, message);
+                    break;
+                case DebugUtilsMessageSeverityFlagsEXT.DebugUtilsMessageSeverityVerboseBitExt:
+                    Logger.TryGet(LogEventLevel.Verbose, "Vulkan")?.Log(null, message);
+                    break;
             }
 
             return Vk.False;

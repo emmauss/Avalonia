@@ -67,7 +67,7 @@ namespace Avalonia.Skia
                 GraphicsQueueIndex = _vulkan.PhysicalDevice.QueueFamilyIndex,
                 GetProcedureAddress = getProc
             };
-            _grContext = GRContext.CreateVulkan(_grVkBackend, new GRContextOptions { AvoidStencilBuffers = true });
+            _grContext = GRContext.CreateVulkan(_grVkBackend);
             if (_maxResourceBytes.HasValue)
             {
                 _grContext.SetResourceCacheLimit(_maxResourceBytes.Value);

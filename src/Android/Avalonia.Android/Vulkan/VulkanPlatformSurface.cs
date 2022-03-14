@@ -23,13 +23,13 @@ namespace Avalonia.Android.Vulkan
 
         public unsafe SurfaceKHR CreateSurface(VulkanInstance instance)
         {
-            if (instance.Api.TryGetInstanceExtension(instance.ApiHandle, out KhrAndroidSurface surfaceExtension))
+            if (instance.Api.TryGetInstanceExtension(new Instance(instance.Handle), out KhrAndroidSurface surfaceExtension))
             {
                 var window = AndroidFramebuffer.ANativeWindow_fromSurface(JNIEnv.Handle, _topLevel.InternalView.Holder.Surface.Handle);
                 var createInfo = new AndroidSurfaceCreateInfoKHR() {
                     Window = (nint*)window, SType = StructureType.AndroidSurfaceCreateInfoKhr };
 
-                surfaceExtension.CreateAndroidSurface(instance.ApiHandle, createInfo, null, out var surface).ThrowOnError();
+                surfaceExtension.CreateAndroidSurface(new Instance(instance.ApiHandle), createInfo, null, out var surface).ThrowOnError();
 
                 return surface;
             }
