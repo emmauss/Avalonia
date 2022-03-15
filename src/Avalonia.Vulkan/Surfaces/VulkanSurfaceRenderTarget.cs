@@ -14,10 +14,8 @@ namespace Avalonia.Vulkan.Surfaces
         private readonly bool _isRgba;
         private readonly VulkanDisplay _display;
         private readonly VulkanSurface _surface;
-        private readonly ImageUsageFlags _imageUsageFlags;
         private PixelSize _size;
         private bool _isDisposed;
-        private long _surfaceId;
 
         public VulkanImage Image
         {
@@ -41,8 +39,6 @@ namespace Avalonia.Vulkan.Surfaces
                      Display.SurfaceFormat.Format <= Format.R8G8B8A8Srgb;
             
             _format = IsRgba ? Format.R8G8B8A8Unorm : Format.B8G8R8A8Unorm;
-
-            SurfaceId = 0;
         }
 
         public bool IsRgba => _isRgba;
@@ -55,7 +51,7 @@ namespace Avalonia.Vulkan.Surfaces
 
         public VulkanSurface Surface => _surface;
 
-        public uint UsageFlags => (uint) _imageUsageFlags;
+        public uint UsageFlags => Image.UsageFlags;
 
         public PixelSize Size
         {
@@ -67,12 +63,6 @@ namespace Avalonia.Vulkan.Surfaces
         {
             get => _isDisposed;
             private set => _isDisposed = value;
-        }
-
-        internal long SurfaceId
-        {
-            get => _surfaceId;
-            private set => _surfaceId = value;
         }
 
         public void Dispose()
@@ -100,8 +90,6 @@ namespace Avalonia.Vulkan.Surfaces
                 Image.TransitionLayout(ImageLayout.ColorAttachmentOptimal, AccessFlags.AccessNoneKhr);
             }
 
-            session.UpdateSurface();
-
             return session;
         }
 
@@ -115,8 +103,6 @@ namespace Avalonia.Vulkan.Surfaces
             Size = Surface.SurfaceSize;
 
             Image = new VulkanImage(_platformInterface.Device, _platformInterface.PhysicalDevice, _platformInterface.Device.CommandBufferPool, ImageFormat, Size);
-
-            SurfaceId++;
         }
 
         private void DestroyImage()

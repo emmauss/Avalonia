@@ -113,15 +113,13 @@ namespace Avalonia.Skia
             {
                 lock (_vulkanSession.Display.Lock)
                 {
-                    if (_vulkanSession.IsImageValid)
-                    {
-                        SkSurface.Canvas.Flush();
-                    }
+                    SkSurface.Canvas.Flush();
 
                     SkSurface.Dispose();
                     _backendRenderTarget.Dispose();
                     GrContext.Flush();
                 }
+
                 _vulkanSession.Dispose();
             }
 

@@ -31,13 +31,6 @@ namespace Avalonia.Vulkan
 
         public bool IsYFlipped { get; } = true;
 
-        public bool IsImageValid => _renderTarget.SurfaceId == _surfaceId;
-
-        public void UpdateSurface()
-        {
-            _surfaceId = _renderTarget.SurfaceId;
-        }
-
         public void Dispose()
         {
             _commandBuffer = Display.StartPresentation(_renderTarget);
