@@ -2,9 +2,15 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Logging;
 using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Rendering.SceneGraph;
+using Avalonia.Skia;
 using Avalonia.Threading;
+using Avalonia.Utilities;
 using Avalonia.Vulkan.Imaging;
+using Avalonia.Vulkan.Skia;
 using Silk.NET.Vulkan;
+using SkiaSharp;
 
 namespace Avalonia.Vulkan.Controls
 {
@@ -12,8 +18,8 @@ namespace Avalonia.Vulkan.Controls
     {
         private VulkanPlatformInterface _platformInterface;
         private VulkanBitmap _bitmap;
-        private IVulkanBitmapAttachment _attachment;
-        private IVulkanBitmapAttachment _oldAttachment;
+        private VulkanBitmapAttachment _attachment;
+        private VulkanBitmapAttachment _oldAttachment;
         private bool _initialized;
 
         public sealed override void Render(DrawingContext context)
@@ -29,11 +35,11 @@ namespace Avalonia.Vulkan.Controls
 
                 EnsureTextureAttachment();
 
-                OnVulkanRender(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
+                OnVulkanRender(_platformInterface, new VulkanImageInfo(_attachment.Image as VulkanImage));
                 _attachment.Present();
             }
 
-            context.DrawImage(_bitmap, new Rect(_bitmap.Size), Bounds);
+            context.Custom(new VulkanDrawOperation(this, _attachment,new Rect(_bitmap.Size), Bounds ));
             base.Render(context);
         }
 
@@ -50,7 +56,7 @@ namespace Avalonia.Vulkan.Controls
                     _attachment = _bitmap.CreateFramebufferAttachment(_platformInterface);
                 }
 
-            (_attachment.GetBitmapImage() as VulkanImage).TransitionLayout(ImageLayout.ColorAttachmentOptimal, AccessFlags.AccessColorAttachmentReadBit);
+            (_attachment.Image as VulkanImage).TransitionLayout(ImageLayout.ColorAttachmentOptimal, AccessFlags.AccessColorAttachmentReadBit);
         }
 
         void DoCleanup()
@@ -63,7 +69,7 @@ namespace Avalonia.Vulkan.Controls
                     if (_initialized)
                     {
                         _initialized = false;
-                        OnVulkanDeinit(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
+                        OnVulkanDeinit(_platformInterface, new VulkanImageInfo(_attachment.Image as VulkanImage));
                     }
                 }
                 finally
@@ -100,17 +106,6 @@ namespace Avalonia.Vulkan.Controls
             {
                 try
                 {
-                    _bitmap = new VulkanBitmap(GetPixelSize(), new Vector(96, 96));
-                }
-                catch (Exception e)
-                {
-                    Logger.TryGet(LogEventLevel.Error, "OpenGL")?.Log("VulkanControlBase",
-                        "Unable to initialize Vulkan: unable to create VulkanBitmap: {exception}", e);
-                    return false;
-                }
-
-                try
-                {
                     EnsureTextureAttachment();
 
                     return true;
@@ -133,7 +128,7 @@ namespace Avalonia.Vulkan.Controls
             if (!_initialized)
                 return false;
 
-            OnVulkanInit(_platformInterface, new VulkanImageInfo(_attachment.GetBitmapImage() as VulkanImage));
+            OnVulkanInit(_platformInterface, new VulkanImageInfo(_attachment.Image as VulkanImage));
 
             return true;
         }
@@ -157,6 +152,90 @@ namespace Avalonia.Vulkan.Controls
         }
         
         protected abstract void OnVulkanRender(VulkanPlatformInterface platformInterface, VulkanImageInfo info);
+
+        private class VulkanDrawOperation : ICustomDrawOperation
+        {
+            private VulkanBitmapAttachment _bitmap;
+
+            public Rect Bounds => _control.Bounds;
+
+            private readonly VulkanControlBase _control;
+            private readonly Rect _srcRect;
+            private readonly Rect _dstRect;
+
+            public VulkanDrawOperation(VulkanControlBase control, VulkanBitmapAttachment attachment, Rect srcRect, Rect dstRect)
+            {
+                _control = control;
+                _srcRect = srcRect;
+                _dstRect = dstRect;
+                _bitmap = attachment;
+            }
+
+            public void Dispose()
+            {
+
+            }
+
+            public bool Equals(ICustomDrawOperation other)
+            {
+                return other is VulkanDrawOperation operation && Equals(operation._control, _control);
+            }
+
+            public bool HitTest(Point p)
+            {
+                return Bounds.Contains(p);
+            }
+
+            public void Render(IDrawingContextImpl context)
+            {
+                if (_bitmap == null)
+                    return;
+
+                if (context is not ISkiaDrawingContextImpl skiaDrawingContextImpl)
+                    return;
+
+                using (_bitmap.Lock())
+                {
+                    _control._platformInterface.Device.QueueWaitIdle();
+
+                    var gpu = AvaloniaLocator.Current.GetService<VulkanSkiaGpu>();
+
+                    var imageInfo = new GRVkImageInfo()
+                    {
+                        CurrentQueueFamily = _control._platformInterface.PhysicalDevice.QueueFamilyIndex,
+                        Format = (uint)_bitmap.Image.Format,
+                        Image = _bitmap.Image.Handle,
+                        ImageLayout = (uint)_bitmap.Image.CurrentLayout,
+                        ImageTiling = (uint)_bitmap.Image.Tiling,
+                        ImageUsageFlags = (uint)_bitmap.Image.UsageFlags,
+                        LevelCount = _bitmap.Image.MipLevels,
+                        SampleCount = 1,
+                        Protected = false,
+                        Alloc = new GRVkAlloc()
+                        {
+                            Memory = _bitmap.Image.MemoryHandle,
+                            Flags = 0,
+                            Offset = 0,
+                            Size = _bitmap.Image.MemorySize
+                        }
+                    };
+
+                    using (var backendTexture = new GRBackendRenderTarget(_bitmap.Image.Size.Width, _bitmap.Image.Size.Height, 1,
+                            imageInfo))
+                    using (var surface = SKSurface.Create(gpu.GrContext, backendTexture,
+                        GRSurfaceOrigin.TopLeft,
+                        SKColorType.Bgra8888, SKColorSpace.CreateSrgb()))
+                    {
+                        // Again, silently ignore, if something went wrong it's not our fault
+                        if (surface == null)
+                            return;
+
+                        using (var snapshot = surface.Snapshot())
+                            skiaDrawingContextImpl.SkCanvas.DrawImage(snapshot, _srcRect.ToSKRect(), _dstRect.ToSKRect(), new SKPaint());
+                    }
+                }
+            }
+        }
     }
 
     public struct VulkanImageInfo

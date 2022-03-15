@@ -13,8 +13,6 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
-using Avalonia.Vulkan;
-using Avalonia.Vulkan.Surfaces;
 using Avalonia.X11;
 using Avalonia.X11.Glx;
 using Avalonia.X11.NativeDialogs;
@@ -97,13 +95,10 @@ namespace Avalonia.X11
 
             if (options.UseGpu)
             {
-                if (!options.UseVulkan || !VulkanPlatformInterface.TryInitialize())
-                {
-                    if (options.UseEGL)
-                        EglPlatformOpenGlInterface.TryInitialize();
-                    else
-                        GlxPlatformOpenGlInterface.TryInitialize(Info, Options.GlProfiles);
-                }
+                if (options.UseEGL)
+                    EglPlatformOpenGlInterface.TryInitialize();
+                else
+                    GlxPlatformOpenGlInterface.TryInitialize(Info, Options.GlProfiles);
             }
         }
 
@@ -200,11 +195,6 @@ namespace Avalonia
         /// Enables native Linux EGL when set to true. The default value is false.
         /// </summary>
         public bool UseEGL { get; set; }
-        
-        /// <summary>
-        /// Enables native Linux Vulkan when set to true. The default value is false.
-        /// </summary>
-        public bool UseVulkan { get; set; }
 
         /// <summary>
         /// Determines whether to use GPU for rendering in your project. The default value is true.

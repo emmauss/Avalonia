@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Avalonia.OpenGL;
-using Avalonia.Skia.Gpu.Vulkan;
-using Avalonia.Vulkan;
+using System.Runtime.InteropServices;
+using Avalonia.Platform;
+using Avalonia.Skia;
 using Avalonia.Vulkan.Imaging;
 using Avalonia.Vulkan.Surfaces;
 using Silk.NET.Vulkan;
 using SkiaSharp;
 
-namespace Avalonia.Skia
+namespace Avalonia.Vulkan.Skia
 {
     public class VulkanSkiaGpu : ISkiaGpu
     {
@@ -19,10 +19,26 @@ namespace Avalonia.Skia
         private GRVkBackendContext _grVkBackend;
         private bool _initialized;
 
+        public GRContext GrContext { get => _grContext; set => _grContext = value; }
+
         public VulkanSkiaGpu(VulkanPlatformInterface vulkan, long? maxResourceBytes)
         {
             _vulkan = vulkan;
             _maxResourceBytes = maxResourceBytes;
+        }
+
+        public static ISkiaGpu CreateGpu(long? maxResourceBytes)
+        {
+            if (VulkanPlatformInterface.TryInitialize())
+            {
+                var platformInterface = AvaloniaLocator.Current.GetService<VulkanPlatformInterface>();
+                var gpu = new VulkanSkiaGpu(platformInterface, maxResourceBytes);
+                AvaloniaLocator.CurrentMutable.Bind<VulkanSkiaGpu>().ToConstant(gpu);
+
+                return gpu;
+            }
+
+            return null;
         }
 
         private void Initialize()
@@ -78,9 +94,29 @@ namespace Avalonia.Skia
         {
             foreach (var surface in surfaces)
             {
-                if (surface is IVulkanPlatformSurface vulkanPlatformSurface)
+                if (surface is ITopLevelImpl windowImpl)
                 {
-                    var vulkanRenderTarget = new VulkanRenderTarget(_vulkan, vulkanPlatformSurface);
+                    IVulkanPlatformSurface platformSurface = null;
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        platformSurface = new Win32VulkanPlatformSurface((IWindowImpl)windowImpl);
+                    }
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    {
+                        var display = (IntPtr)surfaces.FirstOrDefault(x => x is IntPtr);
+
+                        platformSurface = new X11VulkanPlatformSurface(display, (IWindowImpl)windowImpl);
+                    }
+#if NET6_0_OR_GREATER
+                    else if (OperatingSystem.IsAndroid())
+                    {
+                        var window = (IntPtr)surfaces.FirstOrDefault(x => x is IntPtr);
+
+                        platformSurface = new AndroidVulkanPlatformSurface(window, (IWindowImpl)windowImpl);
+                    }
+#endif
+                    
+                    var vulkanRenderTarget = new VulkanRenderTarget(_vulkan, platformSurface);
                     
                     Initialize();
 
@@ -98,7 +134,7 @@ namespace Avalonia.Skia
             return null;
         }
 
-        internal IVulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
+        internal VulkanBitmapImpl CreateVulkamBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
         {
             return new VulkanBitmapImpl(platformInterface, pixelSize, dpi, format);
         }

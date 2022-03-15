@@ -13,6 +13,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Rendering;
 using Avalonia.Threading;
 using Avalonia.Vulkan;
+using Avalonia.Vulkan.Skia;
 
 namespace ControlCatalog.NetCore
 {
@@ -113,14 +114,11 @@ namespace ControlCatalog.NetCore
                     EnableMultiTouch = true,
                     UseDBusMenu = true,
                     EnableIme = true,
-                    UseGpu = true,
-                    UseVulkan = true
+                    UseGpu = false
                 })
                 .With(new Win32PlatformOptions
                 {
                     EnableMultitouch = true,
-                    UseWgl = true,
-                    UseVulkan = true,
                 })
                 .With(new VulkanOptions()
                 {
@@ -128,6 +126,10 @@ namespace ControlCatalog.NetCore
                     PreferDiscreteGpu = true
                 })
                 .UseSkia()
+                .With(new SkiaOptions()
+                {
+                    CustomGpuFactory = maxResourceSizebytes =>VulkanSkiaGpu.CreateGpu(maxResourceSizebytes)
+                })
                 .UseManagedSystemDialogs()
                 .AfterSetup(builder =>
                 {

@@ -11,8 +11,6 @@ using Avalonia.OpenGL;
 using Avalonia.OpenGL.Imaging;
 using Avalonia.Platform;
 using Avalonia.Visuals.Media.Imaging;
-using Avalonia.Vulkan;
-using Avalonia.Vulkan.Imaging;
 using SkiaSharp;
 
 namespace Avalonia.Skia
@@ -20,7 +18,7 @@ namespace Avalonia.Skia
     /// <summary>
     /// Skia platform render interface.
     /// </summary>
-    internal class PlatformRenderInterface : IPlatformRenderInterface, IOpenGlAwarePlatformRenderInterface, IVulkanAwarePlatformRenderInterface
+    internal class PlatformRenderInterface : IPlatformRenderInterface, IOpenGlAwarePlatformRenderInterface
     {
         private readonly ISkiaGpu _skiaGpu;
 
@@ -37,10 +35,6 @@ namespace Avalonia.Skia
             var gl = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
             if (gl != null) 
                 _skiaGpu = new GlSkiaGpu(gl, maxResourceBytes);
-            
-            var vulkan = AvaloniaLocator.Current.GetService<VulkanPlatformInterface>();
-            if (vulkan != null)
-                _skiaGpu = new VulkanSkiaGpu(vulkan, maxResourceBytes);
         }
 
         public IGeometryImpl CreateEllipseGeometry(Rect rect) => new EllipseGeometryImpl(rect);
@@ -311,7 +305,8 @@ namespace Avalonia.Skia
                 "Current GPU acceleration backend does not support OpenGL integration");
         }
 
-        public IVulkanBitmapImpl CreateVulkanBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
+        // TODO Remove
+        /*public IVulkanBitmapImpl CreateVulkanBitmap(VulkanPlatformInterface platformInterface, PixelSize pixelSize, Vector dpi, uint format)
         {
             if (_skiaGpu is VulkanSkiaGpu vulkanGpu)
                 return vulkanGpu.CreateVulkamBitmap(platformInterface, pixelSize, dpi, format);
@@ -319,7 +314,7 @@ namespace Avalonia.Skia
                 throw new PlatformNotSupportedException("GPU acceleration is not available");
             throw new PlatformNotSupportedException(
                 "Current GPU acceleration backend does not support Vulkan integration");
-        }
+        }*/
 
         public bool SupportsIndividualRoundRects => true;
 

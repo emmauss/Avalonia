@@ -9,31 +9,29 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.Vulkan;
 using Avalonia.Vulkan.Imaging;
+using Avalonia.Vulkan.Skia;
 using Silk.NET.Vulkan;
 
 namespace Avalonia.Vulkan.Imaging
 {
     public class VulkanBitmap : Bitmap, IAffectsRender
     {
-        private IVulkanBitmapImpl _impl;
+        private VulkanBitmapImpl _impl;
 
         public VulkanBitmap(PixelSize size, Vector dpi)
             : base(CreateOrThrow(size, dpi))
         {
-            _impl = (IVulkanBitmapImpl)PlatformImpl.Item;
+            _impl = (VulkanBitmapImpl)PlatformImpl.Item;
         }
 
-        static IVulkanBitmapImpl CreateOrThrow(PixelSize size, Vector dpi)
+        static VulkanBitmapImpl CreateOrThrow(PixelSize size, Vector dpi)
         {
             var platformInterface = AvaloniaLocator.Current.GetService<VulkanPlatformInterface>();
-            if (!(AvaloniaLocator.Current.GetService<IPlatformRenderInterface>() is IVulkanAwarePlatformRenderInterface
-                platformRenderInterface))
-                throw new PlatformNotSupportedException("Rendering platform does not support Vulkan integration");
-            return platformRenderInterface.CreateVulkanBitmap(platformInterface, size, dpi, (uint) Format.B8G8R8A8Unorm);
+            return new VulkanBitmapImpl(platformInterface, size, dpi, (uint) Format.B8G8R8A8Unorm);
         }
 
-        public IVulkanBitmapAttachment CreateFramebufferAttachment(VulkanPlatformInterface platformInterface) =>
-            _impl.CreateFramebufferAttachment(platformInterface, SetIsDirty);
+        public VulkanBitmapAttachment CreateFramebufferAttachment(VulkanPlatformInterface platformInterface) =>
+            new VulkanBitmapAttachment(_impl, platformInterface, SetIsDirty);
 
         void SetIsDirty()
         {

@@ -1,13 +1,9 @@
 using System;
-using System.Collections.Generic;
-using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
-using Avalonia.Vulkan;
-using Avalonia.Vulkan.Surfaces;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 
-namespace Avalonia.X11
+namespace Avalonia.Vulkan.Surfaces
 {
     public class X11VulkanPlatformSurface : IVulkanPlatformSurface
     {

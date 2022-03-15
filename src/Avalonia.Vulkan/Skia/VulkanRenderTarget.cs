@@ -1,9 +1,10 @@
 using System;
-using Avalonia.Vulkan;
+using System.Threading;
+using Avalonia.Skia;
 using Avalonia.Vulkan.Surfaces;
 using SkiaSharp;
 
-namespace Avalonia.Skia
+namespace Avalonia.Vulkan.Skia
 {
     internal class VulkanRenderTarget : ISkiaGpuRenderTarget
     {
@@ -107,20 +108,21 @@ namespace Avalonia.Skia
                 _vulkanSession = vulkanSession;
 
                 SurfaceOrigin = vulkanSession.IsYFlipped ? GRSurfaceOrigin.TopLeft : GRSurfaceOrigin.BottomLeft;
+
+                Monitor.Enter(_vulkanSession.Display.Lock);
             }
 
             public void Dispose()
             {
-                lock (_vulkanSession.Display.Lock)
-                {
-                    SkSurface.Canvas.Flush();
+                SkSurface.Canvas.Flush();
 
-                    SkSurface.Dispose();
-                    _backendRenderTarget.Dispose();
-                    GrContext.Flush();
-                }
+                SkSurface.Dispose();
+                _backendRenderTarget.Dispose();
+                GrContext.Flush();
 
                 _vulkanSession.Dispose();
+
+                Monitor.Exit(_vulkanSession.Display.Lock);
             }
 
             public GRContext GrContext { get; }

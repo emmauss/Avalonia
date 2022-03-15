@@ -19,7 +19,6 @@ using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Threading;
-using Avalonia.Vulkan;
 using Avalonia.X11.Glx;
 using static Avalonia.X11.XLib;
 // ReSharper disable IdentifierTypo
@@ -63,7 +62,6 @@ namespace Avalonia.X11
             _keyboard = platform.KeyboardDevice;
 
             var glfeature = AvaloniaLocator.Current.GetService<IPlatformOpenGlInterface>();
-            var vulkanFeature = AvaloniaLocator.Current.GetService<VulkanPlatformInterface>();
             XSetWindowAttributes attr = new XSetWindowAttributes();
             var valueMask = default(SetWindowValuemask);
 
@@ -171,9 +169,11 @@ namespace Avalonia.X11
             if (glx != null)
                 surfaces.Insert(0, new GlxGlPlatformSurface(glx.Display, glx.DeferredContext,
                     new SurfaceInfo(this, _x11.Display, _handle, _renderHandle)));
-            if (vulkanFeature != null)
-                surfaces.Insert(0,
-                    new X11VulkanPlatformSurface(_x11.Display, this));
+            surfaces.Insert(0,
+                new SurfaceInfo(this, _x11.DeferredDisplay, _handle, _renderHandle));
+            
+            surfaces.Insert(0, this);
+            surfaces.Add(_x11.Display);
             
             Surfaces = surfaces.ToArray();
             UpdateMotifHints();

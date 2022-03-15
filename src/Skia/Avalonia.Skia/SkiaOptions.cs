@@ -11,7 +11,7 @@ namespace Avalonia
         /// <summary>
         /// Custom gpu factory to use. Can be used to customize behavior of Skia renderer.
         /// </summary>
-        public Func<ISkiaGpu> CustomGpuFactory { get; set; }
+        public Func<long?, ISkiaGpu> CustomGpuFactory { get; set; }
 
         /// <summary>
         /// The maximum number of bytes for video memory to store textures and resources.

@@ -11,7 +11,6 @@ using Avalonia.OpenGL.Egl;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Skia;
-using Avalonia.Vulkan;
 
 namespace Avalonia
 {
@@ -64,10 +63,7 @@ namespace Avalonia.Android
 
             if (Options.UseGpu)
             {
-                if (Options.UseVulkan)
-                    VulkanPlatformInterface.TryInitialize();
-                else
-                    EglPlatformOpenGlInterface.TryInitialize();
+                EglPlatformOpenGlInterface.TryInitialize();
             }
         }
     }
@@ -76,6 +72,5 @@ namespace Avalonia.Android
     {
         public bool UseDeferredRendering { get; set; } = true;
         public bool UseGpu { get; set; } = true;
-        public bool UseVulkan { get; set; }
     }
 }

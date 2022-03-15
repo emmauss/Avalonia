@@ -1,18 +1,15 @@
 using System;
-using System.Collections.Generic;
-using Avalonia.OpenGL.Egl;
-using Avalonia.Vulkan;
-using Avalonia.Vulkan.Surfaces;
+using Avalonia.Platform;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 
-namespace Avalonia.Win32.Vulkan
+namespace Avalonia.Vulkan.Surfaces
 {
     public class Win32VulkanPlatformSurface : IVulkanPlatformSurface
     {
-        private readonly WindowImpl _window;
+        private readonly IWindowImpl _window;
 
-        public Win32VulkanPlatformSurface(WindowImpl window)
+        public Win32VulkanPlatformSurface(IWindowImpl window)
         {
             _window = window;
         }
