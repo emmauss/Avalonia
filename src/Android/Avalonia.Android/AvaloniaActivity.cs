@@ -8,6 +8,8 @@ using Android.Runtime;
 using Android.App;
 using Android.Content;
 using System;
+using AndroidX.Fragment.App;
+using static Android.Views.View;
 
 namespace Avalonia.Android
 {
@@ -32,31 +34,37 @@ namespace Avalonia.Android
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
+            base.OnCreate(savedInstanceState);
             var builder = CreateAppBuilder();
-
 
             var lifetime = new SingleViewLifetime();
 
+            var container = new FragmentContainerView(this);
+            container.Id = GenerateViewId();
+
+            SetContentView(container);
+            _viewModel = new ViewModelProvider(this).Get(Java.Lang.Class.FromType(typeof(AvaloniaViewModel))) as AvaloniaViewModel;
+
+            View = new AvaloniaView();
+            if (_viewModel.Content != null)
+            {
+                View.Content = _viewModel.Content;
+            }
+
+            lifetime.View = View;
+
             builder.AfterSetup(x =>
             {
-                _viewModel = new ViewModelProvider(this).Get(Java.Lang.Class.FromType(typeof(AvaloniaViewModel))) as AvaloniaViewModel;
-
-                View = new AvaloniaView(this);
-                if (_viewModel.Content != null)
-                {
-                    View.Content = _viewModel.Content;
-                }
-
-                SetContentView(View);
-                lifetime.View = View;
-
-                View.Prepare();
+                SupportFragmentManager
+                    .BeginTransaction()
+                    .SetReorderingAllowed(true)
+                    .Add(container.Id, View, "MAINVIEW")
+                    .CommitNow();
             });
 
             builder.SetupWithLifetime(lifetime);
-
-            base.OnCreate(savedInstanceState);
         }
+
         public object Content
         {
             get

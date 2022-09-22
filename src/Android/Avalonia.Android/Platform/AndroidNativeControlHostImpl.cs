@@ -27,7 +27,7 @@ namespace Avalonia.Android.Platform
 
         public INativeControlHostControlTopLevelAttachment CreateNewAttachment(Func<IPlatformHandle, IPlatformHandle> create)
         {
-            var parent = new AndroidViewControlHandle(_avaloniaView);
+            var parent = new AndroidViewControlHandle(_avaloniaView.View);
             AndroidNativeControlAttachment? attachment = null;
             try
             {
@@ -76,7 +76,7 @@ namespace Avalonia.Android.Platform
 
             public void Dispose()
             {
-                if (_view != null && _attachedTo?._avaloniaView is ViewGroup parent)
+                if (_view != null && _attachedTo?._avaloniaView.View is ViewGroup parent)
                 {
                     parent.RemoveView(_view);
                 }
@@ -96,11 +96,11 @@ namespace Avalonia.Android.Platform
                     _attachedTo = (AndroidNativeControlHostImpl?)value;
                     if (_attachedTo == null)
                     {
-                        oldAttachedTo?._avaloniaView.RemoveView(_view);
+                        (oldAttachedTo?._avaloniaView.View as ViewGroup)?.RemoveView(_view);
                     }
                     else
                     {
-                        _attachedTo._avaloniaView.AddView(_view);
+                        (_attachedTo._avaloniaView.View as ViewGroup)?.AddView(_view);
                     }
                 }
             }

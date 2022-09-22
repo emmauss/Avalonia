@@ -1,31 +1,38 @@
 using System;
-using Android.Content;
-using Android.Runtime;
+using Android.OS;
 using Android.Views;
 using Android.Widget;
+using AndroidX.Fragment.App;
 using Avalonia.Android.Platform.SkiaPlatform;
 using Avalonia.Controls;
 using Avalonia.Controls.Embedding;
 using Avalonia.Rendering;
+using static Android.Views.View;
 
 namespace Avalonia.Android
 {
-    public class AvaloniaView : FrameLayout
+    public class AvaloniaView : Fragment
     {
         private EmbeddableControlRoot _root;
-        private readonly ViewImpl _view;
+        private ViewImpl _view;
 
         private IDisposable _timerSubscription;
+        private object _content;
 
-        public AvaloniaView(Context context) : base(context)
+        public override View OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
         {
             _view = new ViewImpl(this);
-            AddView(_view.View);
+            var frame = new FrameLayout(Context);
+            frame.AddView(_view.View);
+
+            Prepare();
+            return frame;
         }
 
         internal void Prepare ()
         {
             _root = new EmbeddableControlRoot(_view);
+            _root.Content = _content;
             _root.Prepare();
         }
 
@@ -33,28 +40,18 @@ namespace Avalonia.Android
 
         public object Content
         {
-            get { return _root.Content; }
-            set { _root.Content = value; }
+            get { return _root?.Content ?? _content; }
+            set
+            {
+                _content = value;
+                if (_root != null)
+                {
+                    _root.Content = value;
+                }
+            }
         }
 
-        public override bool DispatchKeyEvent(KeyEvent e)
-        {
-            return _view.View.DispatchKeyEvent(e);
-        }
-
-        public override void OnVisibilityAggregated(bool isVisible)
-        {
-            base.OnVisibilityAggregated(isVisible);
-            OnVisibilityChanged(isVisible);
-        }
-
-        protected override void OnVisibilityChanged(View changedView, [GeneratedEnum] ViewStates visibility)
-        {
-            base.OnVisibilityChanged(changedView, visibility);
-            OnVisibilityChanged(visibility == ViewStates.Visible);
-        }
-
-        private void OnVisibilityChanged(bool isVisible)
+        internal void OnVisibilityChanged(bool isVisible)
         {
             if (isVisible)
             {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using Android.Content;
 using Android.Graphics;
+using Android.Runtime;
 using Android.Views;
 using Android.Views.InputMethods;
 using Avalonia.Android.OpenGL;
@@ -51,6 +52,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
             NativeControlHost = new AndroidNativeControlHostImpl(avaloniaView);
             StorageProvider = new AndroidStorageProvider((AvaloniaActivity)avaloniaView.Context);
+
+            _view.VisibilityChanged += (s, e) => avaloniaView.OnVisibilityChanged(e);
         }
 
         public virtual Point GetAvaloniaPointFromEvent(MotionEvent e, int pointerIndex) =>
@@ -146,6 +149,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         class ViewImpl : InvalidationAwareSurfaceView, ISurfaceHolderCallback, IInitEditorInfo
         {
+            public event EventHandler<bool> VisibilityChanged;
+
             private readonly TopLevelImpl _tl;
             private Size _oldSize;
             public ViewImpl(Context context,  TopLevelImpl tl, bool placeOnTop) : base(context)
@@ -187,7 +192,6 @@ namespace Avalonia.Android.Platform.SkiaPlatform
                 return res != null ? res.Value : baseResult;
             }
 
-
             void ISurfaceHolderCallback.SurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
             {
                 var newSize = new PixelSize(width, height).ToSize(_tl.RenderScaling);
@@ -219,6 +223,23 @@ namespace Avalonia.Android.Platform.SkiaPlatform
                     _initEditorInfo(outAttrs);
 
                 return base.OnCreateInputConnection(outAttrs);
+            }
+
+            public override void OnVisibilityAggregated(bool isVisible)
+            {
+                base.OnVisibilityAggregated(isVisible);
+                OnVisibilityChanged(isVisible);
+            }
+
+            private void OnVisibilityChanged(bool isVisible)
+            {
+                VisibilityChanged?.Invoke(this, isVisible);
+            }
+
+            protected override void OnVisibilityChanged(View changedView, [GeneratedEnum] ViewStates visibility)
+            {
+                base.OnVisibilityChanged(changedView, visibility);
+                OnVisibilityChanged(visibility == ViewStates.Visible);
             }
 
         }
