@@ -167,5 +167,7 @@ namespace Avalonia.Platform
         /// Gets the <see cref="AcrylicPlatformCompensationLevels"/> for the platform.        
         /// </summary>
         AcrylicPlatformCompensationLevels AcrylicCompensationLevels { get; }
+
+        void Navigate(UserControl content);
     }
 }

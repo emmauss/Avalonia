@@ -1,9 +1,10 @@
-﻿using Avalonia.OpenGL.Egl;
+﻿using System;
+using Avalonia.OpenGL.Egl;
 using Avalonia.OpenGL.Surfaces;
 
 namespace Avalonia.Android.OpenGL
 {
-    internal sealed class GlPlatformSurface : EglGlPlatformSurfaceBase
+    internal sealed class GlPlatformSurface : EglGlPlatformSurfaceBase, IDisposable
     {
         private readonly EglPlatformOpenGlInterface _egl;
         private readonly IEglWindowGlPlatformSurfaceInfo _info;
@@ -25,6 +26,11 @@ namespace Avalonia.Android.OpenGL
             }
 
             return null;
+        }
+
+        public void Dispose()
+        {
+            _egl?.PrimaryEglContext?.Dispose();
         }
     }
 }

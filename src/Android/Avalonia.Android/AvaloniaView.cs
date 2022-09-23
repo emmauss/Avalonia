@@ -19,6 +19,20 @@ namespace Avalonia.Android
         private IDisposable _timerSubscription;
         private object _content;
 
+        public override void OnResume()
+        {
+            base.OnResume();
+        }
+
+        public AvaloniaView()
+        {
+        }
+
+        internal AvaloniaView(int containerId)
+        {
+            ContainerId = containerId;
+        }
+
         public override View OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
         {
             _view = new ViewImpl(this);
@@ -50,6 +64,8 @@ namespace Avalonia.Android
                 }
             }
         }
+
+        public int ContainerId { get; }
 
         internal void OnVisibilityChanged(bool isVisible)
         {

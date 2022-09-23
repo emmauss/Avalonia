@@ -97,6 +97,11 @@ namespace Avalonia.iOS
                 // No-op
             }
 
+            public void Navigate(UserControl content)
+            {
+                throw new NotImplementedException();
+            }
+
             public Size ClientSize => new Size(_view.Bounds.Width, _view.Bounds.Height);
             public Size? FrameSize => null;
             public double RenderScaling => _view.ContentScaleFactor;

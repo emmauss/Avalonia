@@ -344,5 +344,10 @@ namespace Avalonia.Headless
         {
             
         }
+
+        public void Navigate(UserControl content)
+        {
+            throw new NotSupportedException("Navigation is only support on Single View Lifetime Application");
+        }
     }
 }

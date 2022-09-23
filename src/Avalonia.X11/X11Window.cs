@@ -1208,6 +1208,11 @@ namespace Avalonia.X11
         {
         }
 
+        public void Navigate(UserControl content)
+        {
+            throw new NotSupportedException("Navigation is only support on Single View Lifetime Application");
+        }
+
         public WindowTransparencyLevel TransparencyLevel =>
             _transparencyHelper?.CurrentLevel ?? WindowTransparencyLevel.None;
 

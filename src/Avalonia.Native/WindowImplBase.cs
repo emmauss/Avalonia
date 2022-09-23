@@ -518,6 +518,11 @@ namespace Avalonia.Native
             }
         }
 
+        public void Navigate(UserControl content)
+        {
+            throw new NotSupportedException("Navigation is only support on Single View Lifetime Application");
+        }
+
         public WindowTransparencyLevel TransparencyLevel { get; private set; } = WindowTransparencyLevel.Transparent;
 
         public AcrylicPlatformCompensationLevels AcrylicCompensationLevels { get; } = new AcrylicPlatformCompensationLevels(1, 0, 0);

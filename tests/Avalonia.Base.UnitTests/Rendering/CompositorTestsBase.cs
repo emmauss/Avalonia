@@ -104,6 +104,11 @@ public class CompositorTestsBase
         {
         }
 
+        public void Navigate(UserControl content)
+        {
+            
+        }
+
         public WindowTransparencyLevel TransparencyLevel { get; }
         public AcrylicPlatformCompensationLevels AcrylicCompensationLevels { get; }
     }

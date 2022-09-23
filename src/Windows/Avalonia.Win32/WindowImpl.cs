@@ -1404,6 +1404,11 @@ namespace Avalonia.Win32
             return new ResizeReasonScope(this, old);
         }
 
+        public void Navigate(UserControl content)
+        {
+            throw new NotSupportedException("Navigation is only support on Single View Lifetime Application");
+        }
+
         private struct SavedWindowInfo
         {
             public WindowStyles Style { get; set; }

@@ -45,7 +45,7 @@ namespace Avalonia.Android
             SetContentView(container);
             _viewModel = new ViewModelProvider(this).Get(Java.Lang.Class.FromType(typeof(AvaloniaViewModel))) as AvaloniaViewModel;
 
-            View = new AvaloniaView();
+            View = new AvaloniaView(container.Id);
             if (_viewModel.Content != null)
             {
                 View.Content = _viewModel.Content;

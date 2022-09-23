@@ -194,6 +194,10 @@ namespace Avalonia.Web.Blazor
 
         }
 
+        public void Navigate(UserControl content)
+        {
+        }
+
         public Size ClientSize => _clientSize;
         public Size? FrameSize => null;
         public double RenderScaling => _currentSurface?.Scaling ?? 1;

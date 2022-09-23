@@ -28,22 +28,22 @@ namespace Avalonia.Android.Platform.SkiaPlatform
     class TopLevelImpl : IAndroidView, ITopLevelImpl, EglGlPlatformSurfaceBase.IEglWindowGlPlatformSurfaceInfo,
         ITopLevelImplWithTextInputMethod, ITopLevelImplWithNativeControlHost, ITopLevelImplWithStorageProvider
     {
-        private readonly IGlPlatformSurface _gl;
+        private IGlPlatformSurface _gl;
         private readonly IFramebufferPlatformSurface _framebuffer;
-
+        private readonly AndroidNavigation _navigation;
         private readonly AndroidKeyboardEventsHelper<TopLevelImpl> _keyboardHelper;
         private readonly AndroidMotionEventsHelper _pointerHelper;
         private readonly ITextInputMethodImpl _textInputMethod;
         private ViewImpl _view;
 
-        public TopLevelImpl(AvaloniaView avaloniaView, bool placeOnTop = false)
+        public TopLevelImpl(AvaloniaView avaloniaView, bool placeOnTop = true)
         {
             _view = new ViewImpl(avaloniaView.Context, this, placeOnTop);
             _textInputMethod = new AndroidInputMethod<ViewImpl>(_view);
             _keyboardHelper = new AndroidKeyboardEventsHelper<TopLevelImpl>(this);
             _pointerHelper = new AndroidMotionEventsHelper(this);
-            _gl = GlPlatformSurface.TryCreate(this);
             _framebuffer = new FramebufferManager(this);
+            _navigation = new AndroidNavigation(avaloniaView);
 
             RenderScaling = _view.Scaling;
 
@@ -93,6 +93,14 @@ namespace Avalonia.Android.Platform.SkiaPlatform
                 : AndroidPlatform.Options.UseDeferredRendering
                     ? new DeferredRenderer(root, AvaloniaLocator.Current.GetRequiredService<IRenderLoop>()) { RenderOnlyOnRenderThread = true }
                     : new ImmediateRenderer(root);
+
+        public void CreateGlPlatformSurface()
+        {
+            if(_gl != null)
+            {
+                _gl = GlPlatformSurface.TryCreate(this);
+            }
+        }
 
         public virtual void Hide()
         {
@@ -194,6 +202,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
             void ISurfaceHolderCallback.SurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
             {
+                _tl.CreateGlPlatformSurface();
+
                 var newSize = new PixelSize(width, height).ToSize(_tl.RenderScaling);
 
                 if (newSize != _oldSize)
@@ -268,6 +278,11 @@ namespace Avalonia.Android.Platform.SkiaPlatform
         public void SetTransparencyLevelHint(WindowTransparencyLevel transparencyLevel)
         {
             throw new NotImplementedException();
+        }
+
+        public void Navigate(UserControl content)
+        {
+            _navigation.Navigate(content);
         }
     }
 }

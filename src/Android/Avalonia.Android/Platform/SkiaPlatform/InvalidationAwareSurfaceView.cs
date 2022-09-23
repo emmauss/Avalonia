@@ -62,7 +62,6 @@ namespace Avalonia.Android
         public void SurfaceDestroyed(ISurfaceHolder holder)
         {
             Log.Info("AVALONIA", "Surface Destroyed");
-
         }
 
         protected void DoDraw()
