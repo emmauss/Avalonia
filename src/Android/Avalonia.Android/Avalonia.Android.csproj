@@ -11,12 +11,14 @@
     <None Remove="Resources\anim\fade_out.xml" />
     <None Remove="Resources\anim\slide_in.xml" />
     <None Remove="Resources\anim\slide_out.xml" />
+    <None Remove="Resources\layout\main.xml" />
   </ItemGroup>
   <ItemGroup>
     <AndroidResource Include="Resources\anim\fade_in.xml" />
     <AndroidResource Include="Resources\anim\fade_out.xml" />
     <AndroidResource Include="Resources\anim\slide_out.xml" />
     <AndroidResource Include="Resources\anim\slide_in.xml" />
+    <AndroidResource Include="Resources\layout\main.xml" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\packages\Avalonia\Avalonia.csproj" />

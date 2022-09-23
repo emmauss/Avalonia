@@ -17,16 +17,13 @@ namespace Avalonia.Android
 
         public void Navigate(object content)
         {
-            var view = new AvaloniaView(_avaloniaView.ContainerId)
-            {
-                Content = content
-            };
+            var view = new AvaloniaView(content);
 
             _avaloniaView.ParentFragmentManager.BeginTransaction()
                 .SetReorderingAllowed(true)
                 .AddToBackStack(null)
                 .SetCustomAnimations(Resource.Animation.slide_in, Resource.Animation.fade_out, Resource.Animation.fade_in, Resource.Animation.slide_out)
-                .Add(_avaloniaView.ContainerId, view, null)
+                .Add(Resource.Id.container, view, null)
                 .Commit();
         }
     }

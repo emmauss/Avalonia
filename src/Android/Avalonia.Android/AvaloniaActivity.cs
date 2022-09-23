@@ -1,68 +1,53 @@
-using Android.OS;
-using AndroidX.AppCompat.App;
-using Android.Content.Res;
-using AndroidX.Lifecycle;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls;
-using Android.Runtime;
+using System;
+using System.ComponentModel;
 using Android.App;
 using Android.Content;
-using System;
+using Android.Content.Res;
+using Android.OS;
+using Android.Runtime;
+using Android.Views;
+using AndroidX.AppCompat.App;
 using AndroidX.Fragment.App;
-using static Android.Views.View;
+using AndroidX.Lifecycle;
+using AndroidView = Android.Views;
 
 namespace Avalonia.Android
 {
     public abstract class AvaloniaActivity : AppCompatActivity
     {
-        internal class SingleViewLifetime : ISingleViewApplicationLifetime
-        {
-            public AvaloniaView View { get; internal set; }
-
-            public Control MainView
-            {
-                get => (Control)View.Content;
-                set => View.Content = value;
-            }
-        }
-
         internal Action<int, Result, Intent> ActivityResult;
         internal AvaloniaView View;
         internal AvaloniaViewModel _viewModel;
 
-        protected abstract AppBuilder CreateAppBuilder();
-
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            var builder = CreateAppBuilder();
 
-            var lifetime = new SingleViewLifetime();
-
-            var container = new FragmentContainerView(this);
-            container.Id = GenerateViewId();
-
-            SetContentView(container);
             _viewModel = new ViewModelProvider(this).Get(Java.Lang.Class.FromType(typeof(AvaloniaViewModel))) as AvaloniaViewModel;
 
-            View = new AvaloniaView(container.Id);
-            if (_viewModel.Content != null)
-            {
-                View.Content = _viewModel.Content;
-            }
+            SetContentView(Resource.Layout.main);
 
-            lifetime.View = View;
-
-            builder.AfterSetup(x =>
+            if (savedInstanceState == null)
             {
+                View = new AvaloniaView( null);
+
+                if (_viewModel.Content != null)
+                {
+                    View.Content = _viewModel.Content;
+                }
+
+                if (Avalonia.Application.Current.ApplicationLifetime is SingleViewLifetime lifetime)
+                {
+                    lifetime.View = View;
+                }
+
+                Content = View.Content;
                 SupportFragmentManager
                     .BeginTransaction()
                     .SetReorderingAllowed(true)
-                    .Add(container.Id, View, "MAINVIEW")
+                    .Replace(Resource.Id.container, View, "MAINVIEW")
                     .CommitNow();
-            });
-
-            builder.SetupWithLifetime(lifetime);
+            }
         }
 
         public object Content
@@ -86,7 +71,10 @@ namespace Avalonia.Android
 
         protected override void OnDestroy()
         {
-            View.Content = null;
+            if (View != null)
+            {
+                View.Content = null;
+            }
 
             base.OnDestroy();
         }
@@ -96,18 +84,6 @@ namespace Avalonia.Android
             base.OnActivityResult(requestCode, resultCode, data);
 
             ActivityResult?.Invoke(requestCode, resultCode, data);
-        }
-    }
-
-    public abstract class AvaloniaActivity<TApp> : AvaloniaActivity where TApp : Application, new()
-    {
-        protected virtual AppBuilder CustomizeAppBuilder(AppBuilder builder) => builder.UseAndroid();
-
-        protected override AppBuilder CreateAppBuilder()
-        {
-            var builder = AppBuilder.Configure<TApp>();
-
-            return CustomizeAppBuilder(builder);
         }
     }
 }

@@ -102,6 +102,12 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             }
         }
 
+        public void DestroyGlPlatformSurface()
+        {
+            (_gl as GlPlatformSurface)?.Dispose();
+            _gl = null;
+        }
+
         public virtual void Hide()
         {
             _view.Visibility = ViewStates.Invisible;
@@ -146,7 +152,6 @@ namespace Avalonia.Android.Platform.SkiaPlatform
         
         public virtual void Dispose()
         {
-            _view.Dispose();
             _view = null;
         }
 
@@ -200,9 +205,20 @@ namespace Avalonia.Android.Platform.SkiaPlatform
                 return res != null ? res.Value : baseResult;
             }
 
-            void ISurfaceHolderCallback.SurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
+            void ISurfaceHolderCallback.SurfaceCreated(ISurfaceHolder holder)
             {
                 _tl.CreateGlPlatformSurface();
+                base.SurfaceCreated(holder);
+            }
+
+            void ISurfaceHolderCallback.SurfaceDestroyed(ISurfaceHolder holder)
+            {
+                _tl.DestroyGlPlatformSurface();
+                base.SurfaceDestroyed(holder);
+            }
+
+            void ISurfaceHolderCallback.SurfaceChanged(ISurfaceHolder holder, Format format, int width, int height)
+            {
 
                 var newSize = new PixelSize(width, height).ToSize(_tl.RenderScaling);
 
@@ -265,7 +281,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         IntPtr EglGlPlatformSurfaceBase.IEglWindowGlPlatformSurfaceInfo.Handle => ((IPlatformHandle)_view).Handle;
 
-        public PixelSize Size => _view.Size;
+        public PixelSize Size => _view?.Size ?? new PixelSize();
 
         public double Scaling => RenderScaling;
 
