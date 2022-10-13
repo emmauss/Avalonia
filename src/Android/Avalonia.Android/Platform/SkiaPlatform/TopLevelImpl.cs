@@ -3,7 +3,9 @@ using System.Collections.Generic;
 
 using Android.Content;
 using Android.Graphics;
+using Android.OS;
 using Android.Runtime;
+using Android.Text;
 using Android.Views;
 using Android.Views.InputMethods;
 using Avalonia.Android.OpenGL;
@@ -271,11 +273,11 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public TextInputMethodSurroundingText SurroundingText { get; set; }
 
-        public string ComposingText { get; private set; }
+        public string ComposingText { get; internal set; }
 
-        public ComposingRegion ComposingRegion { get; private set; }
+        public ComposingRegion ComposingRegion { get; internal set; }
 
-        public bool IsComposing { get; private set; }
+        public bool IsComposing => !string.IsNullOrEmpty(ComposingText);
 
         public override bool SetComposingRegion(int start, int end)
         {
@@ -292,8 +294,6 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
             ComposingText = composingText;
 
-            IsComposing = true;
-
             _inputMethod.Client?.SetPreeditText(ComposingText);
 
             return base.SetComposingText(text, newCursorPosition);
@@ -301,9 +301,14 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public override bool FinishComposingText()
         {
-            IsComposing = false;
-
             ComposingRegion = new ComposingRegion(SurroundingText.CursorOffset, SurroundingText.CursorOffset);
+
+            if (!string.IsNullOrEmpty(ComposingText))
+            {
+                CommitText(ComposingText, ComposingText.Length);
+
+                ComposingText = null;
+            }
 
             return base.FinishComposingText();
         }
@@ -363,7 +368,11 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public override bool DeleteSurroundingText(int beforeLength, int afterLength)
         {
-            _inputMethod.Client.SelectInSurroundingText(beforeLength, afterLength);
+            var surroundingText = _inputMethod.Client.SurroundingText;
+
+            var selectionStart = surroundingText.CursorOffset;
+
+            _inputMethod.Client.SelectInSurroundingText(selectionStart - beforeLength, selectionStart + afterLength);
 
             _inputMethod.View.DispatchKeyEvent(new KeyEvent(KeyEventActions.Down, Keycode.ForwardDel));
 
@@ -375,6 +384,20 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             _inputMethod.Client.SelectInSurroundingText(start, end);
 
             return base.SetSelection(start, end);
+        }
+
+        public override bool PerformEditorAction([GeneratedEnum] ImeAction actionCode)
+        {
+            switch (actionCode)
+            {
+                case ImeAction.Done:
+                    {
+                        _inputMethod.IMM.HideSoftInputFromWindow(_inputMethod.View.WindowToken, HideSoftInputFlags.ImplicitOnly);
+                        break;
+                    }
+            }
+
+            return base.PerformEditorAction(actionCode);
         }
     }
 

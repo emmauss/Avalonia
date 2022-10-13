@@ -827,7 +827,7 @@ namespace Avalonia.Controls.Presenters
                 CaretBoundsChanged?.Invoke(this, EventArgs.Empty);
             }
 
-            if (updateCaretIndex)
+            if (updateCaretIndex && string.IsNullOrEmpty(_preeditText))
             {
                 SetAndRaise(CaretIndexProperty, ref _caretIndex, caretIndex);
             }
@@ -853,28 +853,11 @@ namespace Avalonia.Controls.Presenters
 
             if (string.IsNullOrEmpty(newValue))
             {
-                if (!string.IsNullOrEmpty(oldValue))
-                {
-                    var textPosition = _compositionStartHit.FirstCharacterIndex + _compositionStartHit.TrailingLength + newValue?.Length ?? 0;
-
-                    var characterHit = GetCharacterHitFromTextPosition(textPosition);
-
-                    UpdateCaret(characterHit, true);
-                }
-
-                _compositionStartHit = new CharacterHit(-1);
+                UpdateCaret(_lastCharacterHit);
             }
             else
             {
-                if (_compositionStartHit.FirstCharacterIndex == -1)
-                {
-                    _compositionStartHit = _lastCharacterHit;
-                }
-            }
-
-            if (_compositionStartHit.FirstCharacterIndex != -1)
-            {
-                var textPosition = _compositionStartHit.FirstCharacterIndex + _compositionStartHit.TrailingLength + newValue?.Length ?? 0;
+                var textPosition = _caretIndex + newValue?.Length ?? 0;
 
                 var characterHit = GetCharacterHitFromTextPosition(textPosition);
 
