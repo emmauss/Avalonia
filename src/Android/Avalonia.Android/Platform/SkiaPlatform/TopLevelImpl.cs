@@ -319,7 +319,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             {
                 var start = System.Math.Max(SurroundingText.CursorOffset - length, 0);
 
-                var end = System.Math.Min(start + length, SurroundingText.CursorOffset);
+                var end = System.Math.Min(start + length - 1, SurroundingText.CursorOffset);
 
                 var text = SurroundingText.Text.Substring(start, end - start);
 
