@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using Avalonia.Layout;
 using Avalonia.Media.Immutable;
 using Avalonia.Controls.Documents;
+using Avalonia.Input.TextInput;
 
 namespace Avalonia.Controls.Presenters
 {
@@ -316,6 +317,8 @@ namespace Avalonia.Controls.Presenters
 
         protected override bool BypassFlowDirectionPolicies => true;
 
+        public ComposingRegion? ComposingRegion { get; internal set; }
+
         /// <summary>
         /// Creates the <see cref="TextLayout"/> used to render the text.
         /// </summary>
@@ -499,7 +502,16 @@ namespace Avalonia.Controls.Presenters
         {
             if (!string.IsNullOrEmpty(_preeditText))
             {
-                var text = _text?.Substring(0, _caretIndex) + _preeditText + _text?.Substring(_caretIndex);
+                string? text;
+
+                if (ComposingRegion.HasValue)
+                {
+                    text = _text?.Substring(0, ComposingRegion.Value.Start) + _preeditText + _text?.Substring(ComposingRegion.Value.End);
+                }
+                else
+                {
+                    text = _text?.Substring(0, _caretIndex) + _preeditText + _text?.Substring(_caretIndex);
+                }
 
                 return text;
             }
@@ -530,7 +542,7 @@ namespace Avalonia.Controls.Presenters
 
             if (!string.IsNullOrEmpty(_preeditText))
             {
-                var preeditHighlight = new ValueSpan<TextRunProperties>(_caretIndex, _preeditText.Length,
+                var preeditHighlight = new ValueSpan<TextRunProperties>(ComposingRegion.HasValue ? ComposingRegion.Value.Start : _caretIndex, _preeditText.Length,
                         new GenericTextRunProperties(typeface, FontSize,
                         foregroundBrush: foreground,
                         textDecorations: TextDecorations.Underline));
@@ -857,7 +869,7 @@ namespace Avalonia.Controls.Presenters
             }
             else
             {
-                var textPosition = _caretIndex + newValue?.Length ?? 0;
+                var textPosition = (ComposingRegion.HasValue? ComposingRegion.Value.Start : _caretIndex) + newValue?.Length ?? 0;
 
                 var characterHit = GetCharacterHitFromTextPosition(textPosition);
 

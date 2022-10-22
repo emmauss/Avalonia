@@ -275,7 +275,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public string ComposingText { get; internal set; }
 
-        public ComposingRegion ComposingRegion { get; internal set; }
+        public ComposingRegion? ComposingRegion { get; internal set; }
 
         public bool IsComposing => !string.IsNullOrEmpty(ComposingText);
 
@@ -284,6 +284,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             //System.Diagnostics.Debug.WriteLine($"Composing Region: [{start}|{end}] {SurroundingText.Text?.Substring(start, end - start)}");
 
             ComposingRegion = new ComposingRegion(start, end);
+
+            _inputMethod.Client?.SetComposingRegion(ComposingRegion);
 
             return base.SetComposingRegion(start, end);
         }
@@ -301,14 +303,14 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public override bool FinishComposingText()
         {
-            ComposingRegion = new ComposingRegion(SurroundingText.CursorOffset, SurroundingText.CursorOffset);
-
             if (!string.IsNullOrEmpty(ComposingText))
             {
                 CommitText(ComposingText, ComposingText.Length);
 
                 ComposingText = null;
             }
+
+            ComposingRegion = new ComposingRegion(SurroundingText.CursorOffset, SurroundingText.CursorOffset);
 
             return base.FinishComposingText();
         }
@@ -355,7 +357,19 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
             _inputMethod.Client.SetPreeditText(null);
 
-            _inputMethod.Client.SelectInSurroundingText(ComposingRegion.Start, ComposingRegion.End);
+            int? start, end;
+
+            if(ComposingRegion != null)
+            {
+                start = ComposingRegion?.Start;
+                end = ComposingRegion?.End;
+            }
+            else
+            {
+                start = end = _inputMethod.Client.SurroundingText.CursorOffset;
+            }
+
+            _inputMethod.Client.SelectInSurroundingText((int)start, (int)end);
 
             var time = DateTime.Now.TimeOfDay;
 
@@ -399,20 +413,5 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
             return base.PerformEditorAction(actionCode);
         }
-    }
-
-    public readonly struct ComposingRegion
-    {
-        private readonly int _start = -1;
-        private readonly int _end = -1;
-
-        public ComposingRegion(int start, int end)
-        {
-            _start = start;
-            _end = end;
-        }
-
-        public int Start => _start;
-        public int End => _end;
     }
 }
