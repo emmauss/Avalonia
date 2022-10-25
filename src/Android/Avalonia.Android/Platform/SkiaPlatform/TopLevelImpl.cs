@@ -25,6 +25,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Java.Lang;
+using Math = System.Math;
 
 namespace Avalonia.Android.Platform.SkiaPlatform
 {
@@ -269,6 +270,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
         {
             _topLevel = topLevel;
             _inputMethod = inputMethod;
+
+            _inputMethod.Client?.SetComposingRegion(null);
         }
 
         public TextInputMethodSurroundingText SurroundingText { get; set; }
@@ -278,6 +281,7 @@ namespace Avalonia.Android.Platform.SkiaPlatform
         public ComposingRegion? ComposingRegion { get; internal set; }
 
         public bool IsComposing => !string.IsNullOrEmpty(ComposingText);
+        public bool IsCommiting { get; private set; }
 
         public override bool SetComposingRegion(int start, int end)
         {
@@ -306,11 +310,11 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             if (!string.IsNullOrEmpty(ComposingText))
             {
                 CommitText(ComposingText, ComposingText.Length);
-
-                ComposingText = null;
             }
-
-            ComposingRegion = new ComposingRegion(SurroundingText.CursorOffset, SurroundingText.CursorOffset);
+            else
+            {
+                ComposingRegion = new ComposingRegion(SurroundingText.CursorOffset, SurroundingText.CursorOffset);
+            }
 
             return base.FinishComposingText();
         }
@@ -353,16 +357,24 @@ namespace Avalonia.Android.Platform.SkiaPlatform
 
         public override bool CommitText(ICharSequence text, int newCursorPosition)
         {
+            IsCommiting = true;
             var committedText = text.ToString();
 
             _inputMethod.Client.SetPreeditText(null);
 
             int? start, end;
 
-            if(ComposingRegion != null)
+            if(SurroundingText.CursorOffset != SurroundingText.AnchorOffset)
+            {
+                start = Math.Min(SurroundingText.CursorOffset, SurroundingText.AnchorOffset);
+                end = Math.Max(SurroundingText.CursorOffset, SurroundingText.AnchorOffset);
+            }
+            else if (ComposingRegion != null)
             {
                 start = ComposingRegion?.Start;
                 end = ComposingRegion?.End;
+
+                ComposingRegion = null;
             }
             else
             {
@@ -376,6 +388,10 @@ namespace Avalonia.Android.Platform.SkiaPlatform
             var rawTextEvent = new RawTextInputEventArgs(KeyboardDevice.Instance, (ulong)time.Ticks, _topLevel.InputRoot, committedText);
 
             _topLevel.Input(rawTextEvent);
+
+            ComposingText = null;
+
+            IsCommiting = false;
 
             return base.CommitText(text, newCursorPosition);
         }
@@ -396,6 +412,8 @@ namespace Avalonia.Android.Platform.SkiaPlatform
         public override bool SetSelection(int start, int end)
         {
             _inputMethod.Client.SelectInSurroundingText(start, end);
+
+            ComposingRegion = new ComposingRegion(start, end);
 
             return base.SetSelection(start, end);
         }

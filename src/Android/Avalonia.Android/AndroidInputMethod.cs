@@ -102,6 +102,12 @@ namespace Avalonia.Android
                 _inputConnection.SurroundingText = surroundingText;
 
                 _imm.UpdateSelection(_host, surroundingText.AnchorOffset, surroundingText.CursorOffset, surroundingText.AnchorOffset, surroundingText.CursorOffset);
+
+                if (_inputConnection.ComposingText != null && !_inputConnection.IsCommiting && surroundingText.AnchorOffset == surroundingText.CursorOffset)
+                {
+                    _inputConnection.CommitText(_inputConnection.ComposingText, 0);
+                    _inputConnection.SetSelection(surroundingText.AnchorOffset, surroundingText.CursorOffset);
+                }
             }
         }
 

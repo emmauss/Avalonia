@@ -839,7 +839,7 @@ namespace Avalonia.Controls.Presenters
                 CaretBoundsChanged?.Invoke(this, EventArgs.Empty);
             }
 
-            if (updateCaretIndex && string.IsNullOrEmpty(_preeditText))
+            if (updateCaretIndex)
             {
                 SetAndRaise(CaretIndexProperty, ref _caretIndex, caretIndex);
             }

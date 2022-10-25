@@ -67,5 +67,12 @@ namespace Avalonia.Input.TextInput
 
         public int Start => _start;
         public int End => _end;
+
+        public bool Intersects(ComposingRegion region)
+        {
+            return _start <= region.Start && _end >= region.Start ||
+                _end >= region.End && _start <= region.End ||
+                _start >= region.Start && _end <= region.End;
+        }
     }
 }
