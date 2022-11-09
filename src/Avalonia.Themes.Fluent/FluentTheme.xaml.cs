@@ -28,6 +28,7 @@ namespace Avalonia.Themes.Fluent
         private readonly IResourceDictionary _baseLight;
         private readonly IResourceDictionary _fluentLight;
         private readonly Styles _compactStyles;
+        private readonly Styles _mobileStyles;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FluentTheme"/> class.
@@ -42,6 +43,7 @@ namespace Avalonia.Themes.Fluent
             _baseLight = (IResourceDictionary)GetAndRemove("BaseLight");
             _fluentLight = (IResourceDictionary)GetAndRemove("FluentLight");
             _compactStyles = (Styles)GetAndRemove("CompactStyles");
+            _mobileStyles = (Styles)GetAndRemove("MobileStyles");
             
             EnsureThemeVariants();
             EnsureCompactStyles();
@@ -61,6 +63,9 @@ namespace Avalonia.Themes.Fluent
         public static readonly StyledProperty<DensityStyle> DensityStyleProperty =
             AvaloniaProperty.Register<FluentTheme, DensityStyle>(nameof(DensityStyle));
 
+        public static readonly StyledProperty<bool> UseMobileStylesProperty =
+            AvaloniaProperty.Register<FluentTheme, bool>(nameof(UseMobileStyles), false);
+
         /// <summary>
         /// Gets or sets the mode of the fluent theme (light, dark).
         /// </summary>
@@ -78,7 +83,16 @@ namespace Avalonia.Themes.Fluent
             get => GetValue(DensityStyleProperty);
             set => SetValue(DensityStyleProperty, value);
         }
-        
+
+        /// <summary>
+        /// Gets or sets the whether to use mobile style for control if available.
+        /// </summary>
+        public bool UseMobileStyles
+        {
+            get => GetValue(UseMobileStylesProperty);
+            set => SetValue(UseMobileStylesProperty, value);
+        }
+
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
@@ -91,6 +105,23 @@ namespace Avalonia.Themes.Fluent
             if (change.Property == DensityStyleProperty)
             {
                 EnsureCompactStyles();
+            }
+
+            if (change.Property == UseMobileStylesProperty)
+            {
+                EnsureMobileStyles();
+            }
+        }
+
+        private void EnsureMobileStyles()
+        {
+            if (UseMobileStyles)
+            {
+                Add(_mobileStyles);
+            }
+            else
+            {
+                Remove(_mobileStyles);
             }
         }
 

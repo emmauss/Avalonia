@@ -43,6 +43,13 @@ namespace ControlCatalog
             _fluentBaseDarkColors = (IResourceDictionary)Resources["FluentBaseDarkColors"]!;
             
             SetThemeVariant(CatalogTheme.FluentLight);
+
+#if NET6_0_OR_GREATER
+            if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
+            {
+                _fluentTheme.UseMobileStyles = true;
+            }
+#endif
         }
 
         public override void OnFrameworkInitializationCompleted()

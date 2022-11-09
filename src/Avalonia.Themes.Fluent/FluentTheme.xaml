@@ -14,6 +14,7 @@
       <ResourceInclude x:Key="BaseLight" Source="/Accents/BaseLight.xaml" />
       <ResourceInclude x:Key="FluentLight" Source="/Accents/FluentControlResourcesLight.xaml" />
       <StyleInclude x:Key="CompactStyles" Source="/DensityStyles/Compact.xaml" />
+      <StyleInclude x:Key="MobileStyles" Source="/Controls/Mobile/MobileFluentControls.xaml" />
     </ResourceDictionary>
   </Styles.Resources>
   
